@@ -20,6 +20,7 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                 System.out.println("Ответ");
                 ctx.writeAndFlush(msg);
             } else {
+                System.out.println("Отправляю в парсер!");
                 CWOParser.parselResolver(cwo);
             }
         } finally {
