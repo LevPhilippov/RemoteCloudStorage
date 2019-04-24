@@ -12,6 +12,7 @@
         <module>CloudStorageServer</module>
         <module>CloudStorageClient</module>
         <module>CloudStorageCommonFiles</module>
+        <module>CloudStorageClientV2</module>
     </modules>
 
     <properties>
@@ -25,7 +26,13 @@
             <artifactId>netty-all</artifactId>
             <version>4.1.35.Final</version>
         </dependency>
-    </dependencies>
 
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <version>1.18.6</version>
+            <scope>provided</scope>
+        </dependency>
+    </dependencies>
 
 </project>
