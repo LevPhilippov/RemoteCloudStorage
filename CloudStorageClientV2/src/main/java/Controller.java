@@ -1,4 +1,5 @@
 import com.filippov.CloudWrappedObject;
+import javafx.application.Platform;
 import javafx.beans.property.StringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -83,11 +84,17 @@ public class Controller implements Initializable {
     }
 
     public void echo() {
-        CloudWrappedObject c = new CloudWrappedObject();
-        Network.getInstance().getCf().channel().write(c);
+//        CloudWrappedObject c = new CloudWrappedObject();
+//        Network.getInstance().getCf().channel().write(c);
+
     }
 
-//    public void setServerStatus() {
-//        this.serverStatusField.setText("Server is online");
-//    }
+    public void connect() {
+        Network.getInstance().startNetwork();
+    }
+
+    public void disconnest() {
+        Network.getInstance().shutdown();
+        Platform.exit();
+    }
 }
