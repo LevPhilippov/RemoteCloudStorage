@@ -26,8 +26,8 @@ public class CWOParser {
 
     private static void resolveFile(CloudWrappedObject cwo) {
         System.out.println("ЦВО Парсер");
-        Path homePath = Paths.get("CloudStorageServer/Storage");
-        Path path = Paths.get(homePath.toString() + File.separator + cwo.getFileName());
+        String targetPath = cwo.getTargetPath();
+        Path path = Paths.get(targetPath + File.separator + cwo.getFileName());
         System.out.println(path.toString());
         if(!Files.exists(path)){
             try {
@@ -42,7 +42,7 @@ public class CWOParser {
         }
     }
 
-    private static void resolveCommand(CloudWrappedObject cwo) {
-    }
+
+
 
 }

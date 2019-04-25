@@ -16,14 +16,16 @@ public class CloudWrappedObject implements Serializable {
     private int parcelNumber;
     private int parcelsInObject;
     private String fileName;
-    private Path pathAtTargetRepository;
+    private String localPath;
+    private String targetPath;
     private String msg;
 
-    public CloudWrappedObject(TypeEnum typeEnum, byte[] bytes, String fileName) {
+    public CloudWrappedObject(TypeEnum typeEnum, byte[] bytes, String fileName, String localPath, String targetPath) {
         this.typeEnum = typeEnum;
         this.bytes = bytes;
-        this.hashSum = hashSum;
         this.fileName = fileName;
+        this.localPath = localPath;
+        this.targetPath = targetPath;
     }
 
     public enum TypeEnum {

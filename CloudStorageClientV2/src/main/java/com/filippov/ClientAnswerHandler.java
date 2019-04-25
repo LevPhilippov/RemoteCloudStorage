@@ -1,4 +1,5 @@
-import com.filippov.Request;
+package com.filippov;
+
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;

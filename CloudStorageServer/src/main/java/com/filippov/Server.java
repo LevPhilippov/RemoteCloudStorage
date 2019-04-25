@@ -1,3 +1,5 @@
+package com.filippov;
+
 import com.filippov.ObjectInboundHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
@@ -11,6 +13,7 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 
 public class Server {
+    ChannelFuture channelFuture;
 
     public void run() {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
@@ -29,7 +32,7 @@ public class Server {
             }
             }).childOption(ChannelOption.SO_KEEPALIVE,true);
 
-            ChannelFuture channelFuture = bootstrap.bind("127.0.0.1", 8189);
+            channelFuture = bootstrap.bind("127.0.0.1", 8189);
 
             channelFuture.addListener(new ChannelFutureListener() {
                 @Override

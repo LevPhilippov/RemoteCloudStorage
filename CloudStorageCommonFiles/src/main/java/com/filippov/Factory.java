@@ -14,8 +14,8 @@ public class Factory {
     public static List<String> giveFileList(String path) {
         List<String> fileList = new ArrayList<>();
         try {
-            Files.walk(Paths.get(path),1).forEach(path1 -> {
-                fileList.add(path1.getFileName().toString());
+            Files.walk(Paths.get(path),1).forEach(p -> {
+                fileList.add(p.getFileName().toString());
             });
         } catch (IOException e) {
             e.printStackTrace();

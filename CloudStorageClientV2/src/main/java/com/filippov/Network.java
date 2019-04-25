@@ -1,7 +1,5 @@
-import com.filippov.CloudObjectWrapper;
-import com.filippov.CloudWrappedObject;
-import com.filippov.ObjectInboundHandler;
-import com.filippov.Request;
+package com.filippov;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -16,9 +14,10 @@ import javafx.collections.ObservableList;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
 
 public class Network{
 
@@ -27,12 +26,14 @@ public class Network{
     private Network(){}
 
     private ChannelFuture cf;
-    private EventLoopGroup bossGroup = new NioEventLoopGroup(2);
-    private Bootstrap bootstrap = new Bootstrap();
+    private EventLoopGroup bossGroup;
+    private Bootstrap bootstrap;
     private static Controller controller;
 
 
     public void startNetwork() {
+        bossGroup = new NioEventLoopGroup(2);
+        bootstrap = new Bootstrap();
         Thread networkThread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -82,21 +83,21 @@ public class Network{
         bossGroup.shutdownGracefully();
     }
 
-    public void synchronize(ObservableList<String> os) {
-        Path homePath = Paths.get("CloudStorageClientV2/Storage");
-//        Path destPath = Paths.get("CloudStorageServer/Storage");
+    public void sendFileToCloud(ObservableList<String> os) {
+        String localPath = "CloudStorageClientV2/Storage";
+        String destPath = "CloudStorageServer/Storage";
         for (String o : os) {
-            Path path = Paths.get(homePath.toString() + File.separator + o);
+            Path path = Paths.get(localPath.toString() + File.separator + o);
             System.out.println(path.toString());
-            System.out.println(Files.exists(path));
             try {
-                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, o);
-                cf.channel().writeAndFlush(cwo);
+                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, localPath, destPath);
+                cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
+                    System.out.println("Writing Complete!");
+                    requestFilesList(destPath);
+                });
             } catch (IOException a) {
                 System.out.println("Ошибка записи");
                 a.printStackTrace();
-            } finally {
-                requestFilesList("root");
             }
         }
     }
@@ -110,11 +111,14 @@ public class Network{
     }
 
     public void requestFilesList(String path) {
-        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setPath(path));
+        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(path));
     }
 
-    public void requestFile(ObservableList<String> os) {
-
+    public void requestFile(ObservableList<String> os, String serverPath, String clientPath) {
+        List <String> filesList = new ArrayList<>();
+        filesList.addAll(os);
+        System.out.println("Запрос файлов из облака " + filesList);
+        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.GETFILES).setServerPath(serverPath).setFileList(filesList).setClientPath(clientPath));
     }
 
 }

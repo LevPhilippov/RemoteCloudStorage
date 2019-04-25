@@ -1,7 +1,6 @@
 package com.filippov;
 
 import lombok.Getter;
-import lombok.Setter;
 
 import java.io.Serializable;
 import java.util.List;
@@ -15,7 +14,8 @@ public class Request implements Serializable {
 
     private RequestType requestType;
     private RequestType answerType;
-    private String path;
+    private String serverPath;
+    private String clientPath;
     private List<String> fileList;
 
     public Request setRequestType(Request.RequestType requestType){
@@ -28,8 +28,12 @@ public class Request implements Serializable {
         return this;
     }
 
-    public Request setPath(String path) {
-        this.path = path;
+    public Request setServerPath(String serverPath) {
+        this.serverPath = serverPath;
+        return this;
+    }
+    public Request setClientPath(String clientPath) {
+        this.clientPath = clientPath;
         return this;
     }
 
