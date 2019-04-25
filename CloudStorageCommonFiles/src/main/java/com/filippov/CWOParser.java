@@ -10,7 +10,6 @@ public class CWOParser {
 
     public static void parselResolver(CloudWrappedObject cwo) {
         switch (cwo.getTypeEnum()) {
-            case COMMAND: resolveCommand(cwo); break;
             case FILE: resolveFile(cwo); break;
             case SEPARATEDFILE: resolveSeparatedFile(cwo); break;
             default: resolveError(); break;
@@ -27,7 +26,8 @@ public class CWOParser {
 
     private static void resolveFile(CloudWrappedObject cwo) {
         System.out.println("ЦВО Парсер");
-        Path path = Paths.get("CloudStorageServer/Storage" + File.separator + cwo.getFileName());
+        Path homePath = Paths.get("CloudStorageServer/Storage");
+        Path path = Paths.get(homePath.toString() + File.separator + cwo.getFileName());
         System.out.println(path.toString());
         if(!Files.exists(path)){
             try {

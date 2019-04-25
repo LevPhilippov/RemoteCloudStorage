@@ -1,4 +1,4 @@
-import handlers.ObjectInboundHandler;
+import com.filippov.ObjectInboundHandler;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;

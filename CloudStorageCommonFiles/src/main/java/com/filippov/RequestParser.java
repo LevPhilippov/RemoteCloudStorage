@@ -21,21 +21,18 @@ public class RequestParser {
     }
 
 
-
-
-
     public static void sendFileList(Request request, ChannelHandlerContext ctx) {
-        String path = request.getPath();
-        List<String> fileList = new ArrayList<>();
-        try {
-            Files.walk(Paths.get(path),1).forEach(path1 -> {
-                fileList.add(path1.getFileName().toString());
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        request.setRequestType(Request.Requests.ANSWER);
-        request.setFileList(fileList);
-        ctx.writeAndFlush(request);
+        String path;
+        if(request.getPath() == null || request.getPath().equals("root")) {
+            path = "CloudStorageServer/Storage";
+            System.out.println("Получен запрос на отправку списка файлов в корневом каталоге.");
+        } else {path = request.getPath();}
+        List<String> fileList = Factory.giveFileList(path);
+        ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.FILELIST).setFileList(fileList));
+        System.out.println("Отправлен список файлов");
+    }
+
+    private Request formRequest(Request.RequestType requestType, Request.RequestType answerType, String path, List<String> fileList){
+        return new Request().setRequestType(requestType).setAnswerType(answerType).setPath(path).setFileList(fileList);
     }
 }

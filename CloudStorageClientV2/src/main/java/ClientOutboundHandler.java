@@ -1,5 +1,3 @@
-package Handlers;
-
 import io.netty.channel.*;
 
 public class ClientOutboundHandler extends ChannelOutboundHandlerAdapter {

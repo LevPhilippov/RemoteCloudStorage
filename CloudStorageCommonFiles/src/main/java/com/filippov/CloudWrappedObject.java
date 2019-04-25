@@ -26,7 +26,7 @@ public class CloudWrappedObject implements Serializable {
         this.fileName = fileName;
     }
 
-    public CloudWrappedObject(){
-        this.typeEnum = TypeEnum.ECHO;
+    public enum TypeEnum {
+        FILE, SEPARATEDFILE
     }
 }

@@ -1,4 +1,4 @@
-package handlers;
+package com.filippov;
 import com.filippov.CWOParser;
 import com.filippov.CloudWrappedObject;
 import com.filippov.Request;
@@ -13,7 +13,14 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
             if (msg instanceof Request) {
-                System.out.println("Отправляю в парсер запросов!");
+                Request request = (Request) msg;
+                if(request.getRequestType().equals(Request.RequestType.ANSWER)) {
+                    System.out.println("Получен ответ!");
+                    ctx.fireChannelRead(request);
+                    return;
+                }
+
+                System.out.println("Получен запрос! Отправляю в парсер запросов!");
                 RequestParser.parse((Request)msg, ctx);
             }
             else {

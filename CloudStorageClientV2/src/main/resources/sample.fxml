@@ -5,8 +5,8 @@
 <?import javafx.scene.text.Text?>
 <VBox fx:controller="Controller"
       xmlns:fx="http://javafx.com/fxml" alignment="center" >
-    <HBox>
-        <Text fx:id="serverStatusField" text="disconnected" HBox.hgrow="ALWAYS"/>
+    <HBox alignment="CENTER">
+        <Text fx:id="serverStatusField" text="disconnected"  textAlignment="CENTER" HBox.hgrow="ALWAYS"/>
     </HBox>
     <HBox alignment="TOP_CENTER">
         <VBox HBox.hgrow="ALWAYS">
@@ -20,8 +20,7 @@
     </HBox>
     <HBox>
         <Button fx:id="syncButton" text="Sync" HBox.hgrow="ALWAYS" minWidth="100" onAction="#synchronize"/>
-        <Button fx:id="echoButton" text="ECHO" HBox.hgrow="ALWAYS" minWidth="100" onAction="#echo"/>
-        <Button fx:id="connectButton" text="Connect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#echo"/>
-        <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#echo"/>
+        <Button fx:id="connectButton" text="Connect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#connect"/>
+        <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#disconnest"/>
     </HBox>
 </VBox>

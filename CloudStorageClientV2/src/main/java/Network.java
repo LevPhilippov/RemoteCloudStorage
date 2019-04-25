@@ -1,7 +1,7 @@
-import Handlers.ClientInboundHandler;
-import Handlers.ClientOutboundHandler;
 import com.filippov.CloudObjectWrapper;
 import com.filippov.CloudWrappedObject;
+import com.filippov.ObjectInboundHandler;
+import com.filippov.Request;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.sql.SQLOutput;
 
 public class Network{
 
@@ -30,6 +29,7 @@ public class Network{
     private ChannelFuture cf;
     private EventLoopGroup bossGroup = new NioEventLoopGroup(2);
     private Bootstrap bootstrap = new Bootstrap();
+    private static Controller controller;
 
 
     public void startNetwork() {
@@ -44,24 +44,22 @@ public class Network{
                                     new LoggingHandler("EndLogger", LogLevel.INFO),
                                     new ObjectDecoder(1024*1024*10,ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
-                                    new ClientOutboundHandler(),
-                                    new ClientInboundHandler()
+                                    new ObjectInboundHandler(),
+//                                    new ClientOutboundHandler(),
+                                    new ClientAnswerHandler()
                             );
                         }
                     }).option(ChannelOption.SO_KEEPALIVE, true);
 
                     cf = bootstrap.connect("127.0.0.1", 8189);
-                    cf.addListener(new ChannelFutureListener() {
-                        @Override
-                        public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                            if(!channelFuture.isSuccess()) {
-                                System.out.println("Connnection failed!");
-                            } else {
-                                System.out.println("Connection success!");
-                                channelFuture.channel().remoteAddress();
-                            }
-
+                    cf.addListener((ChannelFutureListener) channelFuture -> {
+                        if(!channelFuture.isSuccess()) {
+                            System.out.println("Connnection failed!");
+                        } else {
+                            System.out.println("Connection success!");
+                            requestFilesList("root");
                         }
+
                     }).sync();
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
@@ -84,23 +82,39 @@ public class Network{
         bossGroup.shutdownGracefully();
     }
 
-    public void synchronize(ObservableList<Path> os) {
+    public void synchronize(ObservableList<String> os) {
         Path homePath = Paths.get("CloudStorageClientV2/Storage");
 //        Path destPath = Paths.get("CloudStorageServer/Storage");
-        for (Path o : os) {
-            Path path = Paths.get(homePath.toString() + File.separator + o.toString());
+        for (String o : os) {
+            Path path = Paths.get(homePath.toString() + File.separator + o);
             System.out.println(path.toString());
             System.out.println(Files.exists(path));
             try {
-                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, o.toString());
-                cf.channel().write(cwo);
-//            } catch (InterruptedException e) {
-//                System.out.println("Операция прервана");
-//                e.printStackTrace();
+                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, o);
+                cf.channel().writeAndFlush(cwo);
             } catch (IOException a) {
                 System.out.println("Ошибка записи");
                 a.printStackTrace();
+            } finally {
+                requestFilesList("root");
             }
         }
     }
+
+    public Controller getController() {
+        return controller;
+    }
+
+    public static void setController(Controller controller) {
+        Network.controller = controller;
+    }
+
+    public void requestFilesList(String path) {
+        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setPath(path));
+    }
+
+    public void requestFile(ObservableList<String> os) {
+
+    }
+
 }
