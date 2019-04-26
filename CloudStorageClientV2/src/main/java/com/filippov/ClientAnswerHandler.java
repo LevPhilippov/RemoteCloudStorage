@@ -11,7 +11,7 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
             Request request = (Request) msg;
             switch (request.getAnswerType()) {
                 case FILELIST: {
-                    System.out.println("Обновляю список файлов на сервере");
+                    System.out.println("Обновляю список файлов на сервере " + request.getFileList() );
                     Network.getInstance().getController().refreshServerFileList(request.getFileList());
                     break;
                 }

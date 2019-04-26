@@ -26,7 +26,7 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                 CWOParser.parselResolver(cwo);
             }
         } finally {
-            Network.getInstance().getController().refreshLocalFileList();
+            Network.getInstance().getController().refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());
             ReferenceCountUtil.release(msg);
         }
     }

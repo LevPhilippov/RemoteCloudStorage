@@ -35,7 +35,7 @@ public class RequestParser {
         } else {path = request.getServerPath();}
         List<String> fileList = Factory.giveFileList(path);
         ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.FILELIST).setFileList(fileList));
-        System.out.println("Отправлен список файлов");
+        System.out.println("Отправлен список файлов в каталоге " + path);
     }
 
 

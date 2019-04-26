@@ -21,15 +21,19 @@ import java.util.List;
 
 public class Network{
 
+
     private static Network ourInstance = new Network();
     public static Network getInstance() {return ourInstance;}
     private Network(){}
-
+    private PathHolder pathHolder;
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     private static Controller controller;
 
+    {
+        pathHolder = new PathHolder();
+    }
 
     public void startNetwork() {
         bossGroup = new NioEventLoopGroup(2);
@@ -93,7 +97,7 @@ public class Network{
                 CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, localPath, destPath);
                 cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
                     System.out.println("Writing Complete!");
-                    requestFilesList(destPath);
+                    requestFilesList(pathHolder.getServerPath());
                 });
             } catch (IOException a) {
                 System.out.println("Ошибка записи");
@@ -111,6 +115,7 @@ public class Network{
     }
 
     public void requestFilesList(String path) {
+        System.out.println("Запрашиваю список файлов в каталоге " + path);
         cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(path));
     }
 
@@ -121,4 +126,7 @@ public class Network{
         cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.GETFILES).setServerPath(serverPath).setFileList(filesList).setClientPath(clientPath));
     }
 
+    public PathHolder getPathHolder() {
+        return pathHolder;
+    }
 }

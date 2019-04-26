@@ -5,17 +5,15 @@
 <?import javafx.scene.text.Text?>
 <VBox fx:controller="com.filippov.Controller"
       xmlns:fx="http://javafx.com/fxml" alignment="center" >
-    <HBox alignment="CENTER">
-        <Text fx:id="serverStatusField" text="disconnected"  textAlignment="CENTER" HBox.hgrow="ALWAYS"/>
-    </HBox>
-    <HBox alignment="TOP_CENTER">
+<!--    <Text fx:id="serverConnectionStatus" text="You are ofline"  textAlignment="CENTER"/>-->
+    <HBox >
         <VBox HBox.hgrow="ALWAYS">
-            <Button text="Server" disable="true" minWidth="200" />
-            <ListView fx:id="serverListView"/>
+<!--            <Button fx:id="serverFolder" text="" disable="true" minWidth="1000"/>-->
+            <ListView fx:id="serverListView" />
         </VBox>
         <VBox HBox.hgrow="ALWAYS">
-            <Button text="Client" disable="true" minWidth="200"/>
-            <ListView fx:id="localListView" HBox.hgrow="ALWAYS"/>
+<!--            <Button fx:id="localFolder" text="root" disable="true" minWidth="1000"/>-->
+            <ListView fx:id="localListView" />
         </VBox>
     </HBox>
     <HBox>
@@ -23,6 +21,5 @@
         <Button fx:id="connectButton" text="Connect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#connect"/>
         <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="100" onAction="#disconnest"/>
         <Button fx:id="getFIlesButton" text="Pull" HBox.hgrow="ALWAYS" minWidth="100" onAction="#requestFile"/>
-
     </HBox>
 </VBox>

@@ -5,7 +5,6 @@ import javafx.collections.ObservableList;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
-import javafx.scene.text.Text;
 import lombok.Getter;
 
 import java.net.URL;
@@ -21,22 +20,17 @@ public class Controller implements Initializable {
     @FXML
     private ListView localListView;
 
-    @FXML
-    private Text serverStatusField;
-
-
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         localListView.setManaged(true);
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        refreshLocalFileList();
+        refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());
     }
 
 
-    public void refreshLocalFileList() {
-        String path = "CloudStorageClientV2/Storage/";
+    public void refreshLocalFileList(String path) {
         if (Platform.isFxApplicationThread()) {
             localListView.getItems().clear();
             Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
@@ -68,21 +62,12 @@ public class Controller implements Initializable {
         if (Platform.isFxApplicationThread()) {
                 serverListView.getItems().clear();
                 serverFileList.stream().forEach(serverListView.getItems()::add);
-//                for (String s : serverFileList) {
-//                    serverListView.getItems().add(s);
-//                }
         } else {
             Platform.runLater(() -> {
                     serverListView.getItems().clear();
                     serverFileList.stream().forEach(serverListView.getItems()::add);
             });
         }
-
-//        serverListView.setManaged(true);
-//        serverListView.getItems().clear();
-//        for (String s : serverFileList) {
-//            serverListView.getItems().add(s);
-//        }
     }
 
     public void requestFile() {
