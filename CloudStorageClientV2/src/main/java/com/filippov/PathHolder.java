@@ -1,17 +1,20 @@
 package com.filippov;
 
 
+import java.io.File;
+
 public class PathHolder {
 
-    private final String rootPath = "CloudStorageClientV2/Storage/";
+    private final String clientRootPath = "CloudStorageClientV2/Storage";
+    private final String serverRootPath = "CloudStorageServer/Storage";
     private String clientPath;
     private String serverPath;
 
     public PathHolder() {
-        this.clientPath = rootPath;
-        this.serverPath = "root";
+        this.clientPath = clientRootPath;
+        this.serverPath = serverRootPath;
         System.out.println(clientPath);
-        System.out.println(rootPath);
+        System.out.println(clientRootPath);
     }
 
     public String getClientPath() {

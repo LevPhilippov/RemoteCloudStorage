@@ -14,26 +14,20 @@ import javafx.collections.ObservableList;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
 public class Network{
-
-
     private static Network ourInstance = new Network();
     public static Network getInstance() {return ourInstance;}
     private Network(){}
-    private PathHolder pathHolder;
+    private static PathHolder pathHolder = new PathHolder();;
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     private static Controller controller;
-
-    {
-        pathHolder = new PathHolder();
-    }
 
     public void startNetwork() {
         bossGroup = new NioEventLoopGroup(2);
@@ -62,7 +56,7 @@ public class Network{
                             System.out.println("Connnection failed!");
                         } else {
                             System.out.println("Connection success!");
-                            requestFilesList("root");
+                            requestFilesList(pathHolder.getServerPath());
                         }
 
                     }).sync();
@@ -88,22 +82,37 @@ public class Network{
     }
 
     public void sendFileToCloud(ObservableList<String> os) {
-        String localPath = "CloudStorageClientV2/Storage";
-        String destPath = "CloudStorageServer/Storage";
         for (String o : os) {
-            Path path = Paths.get(localPath.toString() + File.separator + o);
-            System.out.println(path.toString());
-            try {
-                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, localPath, destPath);
-                cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
-                    System.out.println("Writing Complete!");
-                    requestFilesList(pathHolder.getServerPath());
-                });
-            } catch (IOException a) {
-                System.out.println("Ошибка записи");
-                a.printStackTrace();
-            }
+//            Path path = Paths.get(pathHolder.getClientPath() + File.separator + o);
+//            System.out.println(path.toString());
+//            try {
+//                CloudWrappedObject cwo =  CloudObjectWrapper.wrapFile(path, localPath, destPath);
+//                cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
+//                    System.out.println("Writing Complete!");
+//                    requestFilesList(pathHolder.getServerPath());
+//                });
+//            } catch (IOException a) {
+//                System.out.println("Ошибка записи");
+//                a.printStackTrace();
+//            }
+//        }
+            os.stream().map((s) -> Paths.get(pathHolder.getClientPath() + File.separator + s)).forEach((p -> {
+                if (Files.exists(p)) {
+                    System.out.println(p.toString());
+                    try {
+                        CloudWrappedObject cwo = CloudObjectWrapper.wrapFile(p, pathHolder.getClientPath(), pathHolder.getServerPath());
+                        cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
+                            System.out.println("Writing Complete!");
+                            requestFilesList(pathHolder.getServerPath());
+                        });
+                    } catch (IOException a) {
+                        System.out.println("Ошибка записи");
+                        a.printStackTrace();
+                    }
+                }
+            }));
         }
+        requestFilesList(pathHolder.getServerPath());
     }
 
     public Controller getController() {
@@ -114,16 +123,24 @@ public class Network{
         Network.controller = controller;
     }
 
+    /**
+    * Метод отправляет запрос {@link Request} к серверу на получение списка файлов в указанной дидектории на сервере
+     * @param path локальный адрес на сервере
+     * */
     public void requestFilesList(String path) {
         System.out.println("Запрашиваю список файлов в каталоге " + path);
         cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(path));
     }
 
-    public void requestFile(ObservableList<String> os, String serverPath, String clientPath) {
+    public void requestFile(ObservableList<String> os) {
         List <String> filesList = new ArrayList<>();
         filesList.addAll(os);
         System.out.println("Запрос файлов из облака " + filesList);
-        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.GETFILES).setServerPath(serverPath).setFileList(filesList).setClientPath(clientPath));
+        cf.channel().writeAndFlush(new Request()
+                .setRequestType(Request.RequestType.GETFILES)
+                .setServerPath(pathHolder.getServerPath())
+                .setFileList(filesList)
+                .setClientPath(pathHolder.getClientPath()));
     }
 
     public PathHolder getPathHolder() {
