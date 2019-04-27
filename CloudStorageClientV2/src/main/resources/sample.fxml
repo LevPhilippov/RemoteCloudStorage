@@ -23,7 +23,7 @@
         <Button fx:id="backClient" text="step back" minWidth="200" prefWidth="400" onAction="#stepBackClientPath"/>
     </HBox>
     <HBox>
-        <Button fx:id="syncButton" text="Push" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#synchronize"/>
+        <Button fx:id="syncButton" text="Push" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#push"/>
         <Button fx:id="connectButton" text="Connect" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#connect"/>
         <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#disconnest"/>
         <Button fx:id="getFIlesButton" text="Pull" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#requestFile"/>

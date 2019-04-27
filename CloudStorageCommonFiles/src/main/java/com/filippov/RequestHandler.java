@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.function.Consumer;
 
-public class RequestParser {
+public class RequestHandler {
 
     public static void parse(Request request, ChannelHandlerContext ctx) {
         switch (request.getRequestType()){
@@ -55,7 +55,7 @@ public class RequestParser {
                 System.out.println(path.getFileName().toString());
                 CloudWrappedObject cwo = null;
                 try {
-                    cwo = CloudObjectWrapper.wrapFile(path,serverPath,clientPath);
+                    cwo = CloudWrappedObject.wrapFile(path,serverPath,clientPath);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

@@ -1,5 +1,6 @@
-package com.filippov;
+package com.filippov.Handlers;
 
+import com.filippov.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -17,13 +18,13 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                     return;
                 }
                 System.out.println("Получен запрос! Отправляю в парсер запросов!");
-                RequestParser.parse((Request)msg, ctx);
+                RequestHandler.parse((Request)msg, ctx);
             }
             else {
                 CloudWrappedObject cwo = (CloudWrappedObject) msg;
                 System.out.println(cwo.getMsg());
                 System.out.println("Отправляю в парсер объектов!");
-                CWOParser.parselResolver(cwo);
+                CWOHandler.parse(cwo);
             }
         } finally {
             Network.getInstance().getController().refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());

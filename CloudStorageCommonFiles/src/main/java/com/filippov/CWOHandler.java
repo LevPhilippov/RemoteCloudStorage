@@ -6,25 +6,21 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-public class CWOParser {
+public class CWOHandler {
 
-    public static void parselResolver(CloudWrappedObject cwo) {
+    public static void parse(CloudWrappedObject cwo) {
         switch (cwo.getTypeEnum()) {
-            case FILE: resolveFile(cwo); break;
-            case SEPARATEDFILE: resolveSeparatedFile(cwo); break;
-            default: resolveError(); break;
+            case FILE: writeIntoFile(cwo); break;
+            default: showError(); break;
         }
     }
 
-    private static void resolveError() {
+    private static void showError() {
         System.out.println("Неизвестная команда или данные повреждены");
     }
 
-    private static void resolveSeparatedFile(CloudWrappedObject cwo) {
 
-    }
-
-    private static void resolveFile(CloudWrappedObject cwo) {
+    private static void writeIntoFile(CloudWrappedObject cwo) {
         System.out.println("ЦВО Парсер");
         String targetPath = cwo.getTargetPath();
         Path path = Paths.get(targetPath + File.separator + cwo.getFileName());

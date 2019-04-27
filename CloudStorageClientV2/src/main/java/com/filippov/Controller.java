@@ -93,7 +93,7 @@ public class Controller implements Initializable {
         clientFolder.setText(Network.getInstance().getPathHolder().getClientPath());
     }
 
-    public void synchronize() {
+    public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
         Network.getInstance().sendFileToCloud(os);
     }

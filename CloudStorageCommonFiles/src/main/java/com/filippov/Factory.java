@@ -24,14 +24,16 @@ public class Factory {
     }
 
     public static String giveStepBackPath(String oldPath) {
-        System.out.println(oldPath);
+        System.out.println("Меняю старый путь: " + oldPath);
         String[] oldPathArray = oldPath.split("/");
         String[] newPathArray = Arrays.copyOfRange(oldPathArray,0,oldPathArray.length-1);
         StringBuilder builder = new StringBuilder();
         Arrays.stream(newPathArray).forEach((s)-> {
             builder.append(s + '/');
         });
-        return builder.toString();
+        String newPath = builder.toString();
+        System.out.println("Новый путь: " + newPath);
+        return newPath;
     }
 
 

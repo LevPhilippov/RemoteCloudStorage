@@ -13,8 +13,8 @@ public class PathHolder {
     public PathHolder() {
         this.clientPath = clientRootPath;
         this.serverPath = serverRootPath;
-        System.out.println(clientPath);
-        System.out.println(clientRootPath);
+//        System.out.println(clientPath);
+//        System.out.println(clientRootPath);
     }
 
     public String getClientPath() {
