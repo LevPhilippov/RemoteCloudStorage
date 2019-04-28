@@ -23,18 +23,25 @@ public class Factory {
         return fileList;
     }
 
-    public static String giveStepBackPath(String oldPath) {
-        System.out.println("Меняю старый путь: " + oldPath);
-        String[] oldPathArray = oldPath.split("/");
-        String[] newPathArray = Arrays.copyOfRange(oldPathArray,0,oldPathArray.length-1);
-        StringBuilder builder = new StringBuilder();
-        Arrays.stream(newPathArray).forEach((s)-> {
-            builder.append(s + '/');
-        });
-        String newPath = builder.toString();
-        System.out.println("Новый путь: " + newPath);
-        return newPath;
-    }
+//    public static String giveStepBackPath(String oldPath) {
+//        System.out.println("Меняю старый путь: " + oldPath);
+//        StringBuilder builder = new StringBuilder();
+//
+//        char[] chars = oldPath.toCharArray();
+//        for (int i = 0; i <chars.length ; i++) {
+//            chars[i] = (chars[i]=='\\')? '/': chars[i];
+//        }
+//        oldPath = new String(chars);
+//
+//        String[] oldPathArray = oldPath.split("/");
+//        String[] newPathArray = Arrays.copyOfRange(oldPathArray,0,oldPathArray.length-1);
+//        Arrays.stream(newPathArray).forEach((s)-> {
+//            builder.append(s + '/');
+//        });
+//        String newPath = builder.toString();
+//        System.out.println("Новый путь: " + newPath);
+//        return newPath;
+//    }
 
 
 

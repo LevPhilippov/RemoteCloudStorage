@@ -14,7 +14,6 @@ import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
 import javafx.collections.ObservableList;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
@@ -58,7 +57,7 @@ public class Network{
                             System.out.println("Connnection failed!");
                         } else {
                             System.out.println("Connection success!");
-                            requestFilesList(pathHolder.getServerPath());
+                            requestFilesList();
                         }
 
                     }).sync();
@@ -74,10 +73,6 @@ public class Network{
         networkThread.start();
     }
 
-    public ChannelFuture getCf() {
-        return cf;
-    }
-
     public void shutdown() {
         cf.channel().closeFuture();
         bossGroup.shutdownGracefully();
@@ -86,25 +81,29 @@ public class Network{
     /**
      * Принимает на вход список имен файлов в директории, где находится клиент выполняет запись этих файлов в канал
      * */
-    public void sendFileToCloud(ObservableList<String> os) {
-            os.stream().map((s) -> Paths.get(pathHolder.getClientPath() + "/" + s)).forEach(this::writeIntoChannel);
-        requestFilesList(pathHolder.getServerPath());
-    }
-
-    public Controller getController() {
-        return controller;
-    }
-
-    public static void setController(Controller controller) {
-        Network.controller = controller;
+    public void writeFilesIntoChannel(ObservableList<String> os) {
+            os.stream().map((s) -> Paths.get(pathHolder.getClientPath() + "/" + s)).forEach((path -> {
+                if (Files.exists(path)) {
+                    try {
+                        Files.walkFileTree(path, new MyFileVisitor(pathHolder.getClientPath(), pathHolder.getServerPath(), cf.channel())
+                        );
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        System.out.println("В конце директория клиента: " + pathHolder.getClientPath());
+        System.out.println("В конце директория сервера: " + pathHolder.getServerPath());
+        requestFilesList();
     }
 
     /**
     * Метод отправляет запрос {@link Request} к серверу на получение списка файлов в указанной дидектории на сервере
-     * @param path локальный адрес на сервере
+     *
      * */
 
-    public void requestFilesList(String path) {
+    public void requestFilesList() {
+        String path = pathHolder.getServerPath();
         System.out.println("Запрашиваю список файлов в каталоге " + path);
         cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(path));
     }
@@ -124,14 +123,21 @@ public class Network{
         return pathHolder;
     }
 
+    public Controller getController() {
+        return controller;
+    }
 
+    public static void setController(Controller controller) {
+        Network.controller = controller;
+    }
+
+//заменено на общий MyFileVisitor и запись в канал в классе CloudWrappedObject;
 //    Consumer<Path> consumer = p -> {
 //
 //            if (Files.exists(p)) {
-////                if(Files.isDirectory(p)) {
-////                    System.out.println(p.toString() + "is a directory!");
 //                    try {
-//                        Files.walkFileTree(p, new FileVisitor<Path>() {
+//                        Files.walkFileTree(p, new MyFileVisitor()
+//                                new FileVisitor<Path>() {
 //                            @Override
 //                            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
 //                                pathHolder.setClientPath(dir.toString());
@@ -143,7 +149,7 @@ public class Network{
 //
 //                            @Override
 //                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-////                                writeIntoChannel(p);
+//                                writeIntoChannel(file);
 //                                return FileVisitResult.CONTINUE;
 //                            }
 //
@@ -162,37 +168,32 @@ public class Network{
 //                                System.out.println("Вышли из дериктории клиента: "+ pathHolder.getClientPath());
 //                                System.out.println("Вышли из директории сервера: " + pathHolder.getServerPath());
 //                                return FileVisitResult.CONTINUE;                            }
-//                        });
+//                        }
+//                        );
 //                    } catch (IOException e) {
 //                        e.printStackTrace();
 //                    }
-//
-//
-//                } else {
-//                    System.out.println(p.toString() + "is a file!");
-//
-//                    writeIntoChannel(p);
+
 //
 //                }
-//            }
 //        System.out.println("В конце директория клиента: " + pathHolder.getClientPath());
 //        System.out.println("В конце директория сервера: " + pathHolder.getServerPath());
 //    };
 
-    private void writeIntoChannel(Path path) {
-        System.out.printf("Файл %s будет записан в канал и размещен в папке %s на сервере", path.toString(), pathHolder.getServerPath());
-        System.out.println();
-        try {
-            CloudWrappedObject cwo = CloudWrappedObject.wrapFile(path, pathHolder.getClientPath(), pathHolder.getServerPath());
-            cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
-                System.out.println("Writing Complete!");
-                requestFilesList(pathHolder.getServerPath());
-            });
-        } catch (IOException a) {
-            System.out.println("Ошибка записи");
-            a.printStackTrace();
-        }
-    }
+//    private void writeIntoChannel(Path path) {
+//        System.out.printf("Файл %s будет записан в канал и размещен в папке %s на сервере", path.getFileName().toString(), pathHolder.getServerPath());
+//        System.out.println();
+//        try {
+//            CloudWrappedObject cwo = CloudWrappedObject.wrapFile(path, pathHolder.getClientPath(), pathHolder.getServerPath());
+//            cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
+//                System.out.println("Writing Complete!");
+//                requestFilesList(pathHolder.getServerPath());
+//            });
+//        } catch (IOException a) {
+//            System.out.println("Ошибка записи");
+//            a.printStackTrace();
+//        }
+//    }
 
 
 

@@ -23,10 +23,12 @@ public class CWOHandler {
     private static void writeIntoFile(CloudWrappedObject cwo) {
         System.out.println("ЦВО Парсер");
         String targetPath = cwo.getTargetPath();
-        Path path = Paths.get(targetPath + File.separator + cwo.getFileName());
+        Path path = Paths.get(targetPath + "/" + cwo.getFileName());
         System.out.println(path.toString());
+
         if(!Files.exists(path)){
             try {
+                Files.createDirectories(Paths.get(targetPath));
                 Files.createFile(path);
                 Files.write(path,cwo.getBytes());
             } catch (IOException e) {

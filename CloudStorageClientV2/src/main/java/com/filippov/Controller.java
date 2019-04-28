@@ -10,11 +10,10 @@ import javafx.scene.input.MouseEvent;
 import lombok.Getter;
 import sun.nio.ch.Net;
 
-import java.io.File;
 import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -44,7 +43,7 @@ public class Controller implements Initializable {
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());
+        refreshLocalFileList();
         setListenersOnListView();
     }
 
@@ -57,7 +56,8 @@ public class Controller implements Initializable {
                     String path = pathHolder.getClientPath() + '/' + (String)localListView.getSelectionModel().getSelectedItem();
                     if(Files.isDirectory(Paths.get(path))) {
                         System.out.println("Новый путь к директории клиента: " + path);
-                        refreshLocalFileList(path);
+                        pathHolder.setClientPath(path);
+                        refreshLocalFileList();
                         return;
                     }
                     System.out.println("Выбранный файл не является директорией!");
@@ -71,21 +71,23 @@ public class Controller implements Initializable {
                 if(event.getClickCount()==2) {
                     PathHolder pathHolder = Network.getInstance().getPathHolder();
                     String path = pathHolder.getServerPath() + '/' + (String)serverListView.getSelectionModel().getSelectedItem();
+                    pathHolder.setServerPath(path);
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path);
-                    Network.getInstance().requestFilesList(path);
+                    Network.getInstance().requestFilesList();
                 }
             }
         });
     }
 
-    public void refreshLocalFileList(String path) {
+    public void refreshLocalFileList() {
+        String path = Network.getInstance().getPathHolder().getClientPath();
         if (Platform.isFxApplicationThread()) {
-            Network.getInstance().getPathHolder().setClientPath(path);
+           // Network.getInstance().getPathHolder().setClientPath(path);
             localListView.getItems().clear();
             Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
         } else {
             Platform.runLater(() -> {
-                Network.getInstance().getPathHolder().setClientPath(path);
+         //       Network.getInstance().getPathHolder().setClientPath(path);
                 localListView.getItems().clear();
                 Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
             });
@@ -95,7 +97,7 @@ public class Controller implements Initializable {
 
     public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().sendFileToCloud(os);
+        Network.getInstance().writeFilesIntoChannel(os);
     }
 
     public void connect() {
@@ -130,13 +132,17 @@ public class Controller implements Initializable {
     }
 
     public void stepBackServerPath(){
-        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getServerPath());
-        Network.getInstance().requestFilesList(newPath);
+        PathHolder pathHolder = Network.getInstance().getPathHolder();
+        pathHolder.setServerPath(Paths.get(pathHolder.getServerPath()).getParent().toString());
+//        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getServerPath());
+        Network.getInstance().requestFilesList();
     }
 
     public void stepBackClientPath(){
-        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getClientPath());
-        refreshLocalFileList(newPath);
+        PathHolder pathHolder = Network.getInstance().getPathHolder();
+        pathHolder.setClientPath(Paths.get(pathHolder.getClientPath()).getParent().toString());
+//        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getClientPath());
+        refreshLocalFileList();
     }
 
 
