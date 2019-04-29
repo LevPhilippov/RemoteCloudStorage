@@ -11,7 +11,7 @@ import java.nio.file.*;
 
 public class WrappedFileHandler {
 
-    private static int byteBufferSize = 1024*1024;
+    public static int byteBufferSize = 1024*1024*5;
 
 
     public static void parseToSave(WrappedFile wrappedFile) {

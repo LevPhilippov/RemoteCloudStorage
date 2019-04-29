@@ -42,7 +42,7 @@ public class Network{
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline().addLast(
                                     new LoggingHandler("EndLogger", LogLevel.INFO),
-                                    new ObjectDecoder(1024*1024*10,ClassResolvers.cacheDisabled(null)),
+                                    new ObjectDecoder(WrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
                                     new ObjectInboundHandler(),
                                     new ClientAnswerHandler()

@@ -27,7 +27,7 @@ public class Server {
                 socketChannel.pipeline().addLast(
                         new LoggingHandler("serverLog", LogLevel.INFO),
                         new ObjectEncoder(),
-                        new ObjectDecoder(1024*1024*10,ClassResolvers.cacheDisabled(null)),
+                        new ObjectDecoder(WrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
                         new ObjectInboundHandler());
             }
             }).childOption(ChannelOption.SO_KEEPALIVE,true);
