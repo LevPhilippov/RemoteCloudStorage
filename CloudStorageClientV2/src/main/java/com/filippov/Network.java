@@ -12,8 +12,12 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import javafx.collections.ObservableList;
 
+import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
@@ -21,26 +25,35 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Network{
+    public static final String HOST = "localhost";
+    public static final int PEER_PORT = 8189;
     private static Network ourInstance = new Network();
     public static Network getInstance() {return ourInstance;}
     private Network(){}
-    private static PathHolder pathHolder = new PathHolder();;
+    private static PathHolder pathHolder = new PathHolder();
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     private static Controller controller;
+
 
     public void startNetwork() {
         bossGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap();
         Thread networkThread = new Thread(new Runnable() {
             @Override
-            public void run() {
+            public void run(){
                 try {
+                    ;
+                    // Configure SSL.
+                    final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                    //SSL
+
                     bootstrap.group(bossGroup).channel(NioSocketChannel.class).handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline().addLast(
+                                    sslCtx.newHandler(socketChannel.alloc(), HOST, PEER_PORT),
                                     new LoggingHandler("EndLogger", LogLevel.INFO),
                                     new ObjectDecoder(WrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
@@ -55,7 +68,7 @@ public class Network{
                         if(!channelFuture.isSuccess()) {
                             System.out.println("Connnection failed!");
                         } else {
-                            System.out.println("Connection success!");
+                            System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
                             requestFilesList();
                         }
 
@@ -63,7 +76,10 @@ public class Network{
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                } finally {
+                } catch (SSLException o) {
+
+                }
+                finally {
                     shutdown();
                 }
             }
