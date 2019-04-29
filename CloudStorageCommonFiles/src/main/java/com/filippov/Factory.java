@@ -2,8 +2,10 @@ package com.filippov;
 
 import io.netty.channel.ChannelHandlerContext;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -11,17 +13,19 @@ import java.util.List;
 
 public class Factory {
 
-    public static List<String> giveFileList(String path) {
-        List<String> fileList = new ArrayList<>();
+    public static List<File> giveFileList(File file) {
+        List<File> fileList = new ArrayList<>();
         try {
-            Files.walk(Paths.get(path),1).forEach(p -> {
-                fileList.add(p.getFileName().toString());
+            Files.walk(file.toPath(),1).forEach(p -> {
+                fileList.add(p.toFile());
             });
         } catch (IOException e) {
             e.printStackTrace();
         }
+        fileList.remove(0);
         return fileList;
     }
+
 
 //    public static String giveStepBackPath(String oldPath) {
 //        System.out.println("Меняю старый путь: " + oldPath);

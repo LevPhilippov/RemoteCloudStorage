@@ -8,17 +8,16 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import lombok.Getter;
-import sun.nio.ch.Net;
 
+import java.io.File;
 import java.net.URL;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.ResourceBundle;
 
 @Getter
 public class Controller implements Initializable {
+
+    Network network;
 
     @FXML
     private ListView serverListView;
@@ -36,6 +35,7 @@ public class Controller implements Initializable {
     public void initialize(URL location, ResourceBundle resources) {
         try {
             Class.forName("com.filippov.Network");
+            network = Network.getInstance();
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
@@ -43,7 +43,7 @@ public class Controller implements Initializable {
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        refreshLocalFileList();
+        refreshLocalFilesList();
         setListenersOnListView();
     }
 
@@ -52,12 +52,12 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    PathHolder pathHolder = Network.getInstance().getPathHolder();
-                    String path = pathHolder.getClientPath() + '/' + (String)localListView.getSelectionModel().getSelectedItem();
-                    if(Files.isDirectory(Paths.get(path))) {
-                        System.out.println("Новый путь к директории клиента: " + path);
-                        pathHolder.setClientPath(path);
-                        refreshLocalFileList();
+                    File path = new File(network.getPathHolder().getClientPath().toString() + '/' + localListView.getSelectionModel().getSelectedItem());
+                    if(path.isDirectory()) {
+                        System.out.println("Новый путь к директории клиента: " + path.toString());
+                        network.getPathHolder().setClientPath(path);
+
+                        refreshLocalFilesList();
                         return;
                     }
                     System.out.println("Выбранный файл не является директорией!");
@@ -70,39 +70,40 @@ public class Controller implements Initializable {
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
                     PathHolder pathHolder = Network.getInstance().getPathHolder();
-                    String path = pathHolder.getServerPath() + '/' + (String)serverListView.getSelectionModel().getSelectedItem();
+                    File path = new File(pathHolder.getServerPath().toString() + '/' + serverListView.getSelectionModel().getSelectedItem());
                     pathHolder.setServerPath(path);
-                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path);
+                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
                     Network.getInstance().requestFilesList();
                 }
             }
         });
     }
 
-    public void refreshLocalFileList() {
-        String path = Network.getInstance().getPathHolder().getClientPath();
-        if (Platform.isFxApplicationThread()) {
-           // Network.getInstance().getPathHolder().setClientPath(path);
+
+    public void refreshLocalFilesList(){
+        Runnable refresh = () -> {
+            //обновление листа для клиента
+            network.getPathHolder().getClientPathMap().clear();
             localListView.getItems().clear();
-            Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
-        } else {
-            Platform.runLater(() -> {
-         //       Network.getInstance().getPathHolder().setClientPath(path);
-                localListView.getItems().clear();
-                Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
+            Factory.giveFileList(network.getPathHolder().getClientPath()).forEach((path)->{
+                network.getPathHolder().getClientPathMap().put(path.getName(),path);
             });
-        }
-        clientFolder.setText(Network.getInstance().getPathHolder().getClientPath());
+            localListView.getItems().setAll(network.getPathHolder().getClientPathMap().keySet());
+            clientFolder.setText(network.getPathHolder().getClientPath().toString());
+        };
+        refreshPattern(refresh);
+
     }
+
 
     public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().writeFilesIntoChannel(os);
+        Network.getInstance().writeFilesIntoChannel(os, Request.RequestType.GETFILES);
     }
 
     public void connect() {
         Network.setController(this);
-        Network.getInstance().startNetwork();
+        network.startNetwork();
     }
 
     public void disconnest() {
@@ -110,42 +111,59 @@ public class Controller implements Initializable {
         Platform.exit();
     }
 
-    public void refreshServerFileList(List<String> serverFileList) {
-        if (Platform.isFxApplicationThread()) {
-                serverListView.getItems().clear();
-                serverFileList.stream().forEach(serverListView.getItems()::add);
-                serverFolder.setText(Network.getInstance().getPathHolder().getServerPath());
+    public void refreshServerFileList(List<File> serverFileList) {
+        Runnable refresh = () -> {
+            //обновление листа для сервера
+            serverListView.getItems().clear();
+            network.getPathHolder().getServerPathMap().clear();
+            serverFileList.stream().forEach((path) -> {
+                network.getPathHolder().getServerPathMap().put(path.getName(),path);
 
-        } else {
-            Platform.runLater(() -> {
-                    serverListView.getItems().clear();
-                    serverFileList.stream().forEach(serverListView.getItems()::add);
-                    serverFolder.setText(Network.getInstance().getPathHolder().getServerPath());
             });
-        }
-
+            serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
+            serverFolder.setText(network.getPathHolder().getServerPath().toString());
+        };
+        refreshPattern(refresh);
     }
 
     public void requestFile() {
         ObservableList<String> os = serverListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().requestFile(os);
+        network.sendRequest(os, Request.RequestType.GETFILES);
     }
 
     public void stepBackServerPath(){
-        PathHolder pathHolder = Network.getInstance().getPathHolder();
-        pathHolder.setServerPath(Paths.get(pathHolder.getServerPath()).getParent().toString());
-//        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getServerPath());
-        Network.getInstance().requestFilesList();
+        network.getPathHolder().setServerPath(new File(network.getPathHolder().getServerPath().getParent()));
+        network.requestFilesList();
     }
 
     public void stepBackClientPath(){
-        PathHolder pathHolder = Network.getInstance().getPathHolder();
-        pathHolder.setClientPath(Paths.get(pathHolder.getClientPath()).getParent().toString());
-//        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getClientPath());
-        refreshLocalFileList();
+        network.getPathHolder().setClientPath(new File(network.getPathHolder().getClientPath().getParent()));
+        refreshLocalFilesList();
     }
 
 
+    private static void refreshPattern(Runnable refresh) {
+        if (Platform.isFxApplicationThread()) {
+            refresh.run();
+        } else {
+            Platform.runLater(refresh);
+        }
+    }
+
+    public void delete() {
+        ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
+        if(!observableList.isEmpty()) {
+            System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
+            network.writeFilesIntoChannel(observableList, Request.RequestType.DELETEFILES);
+        }
+        observableList = serverListView.getSelectionModel().getSelectedItems();
+        if (!observableList.isEmpty()) {
+            System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
+            network.sendRequest(observableList, Request.RequestType.DELETEFILES);
+        }
+        refreshLocalFilesList();
+        network.requestFilesList();
+    }
 
 
 }

@@ -21,13 +21,13 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                 RequestHandler.parse((Request)msg, ctx);
             }
             else {
-                CloudWrappedObject cwo = (CloudWrappedObject) msg;
+                WrappedFile cwo = (WrappedFile) msg;
                 System.out.println(cwo.getMsg());
                 System.out.println("Отправляю в парсер объектов!");
-                CWOHandler.parse(cwo);
+                WrappedFileHandler.parseToSave(cwo);
             }
         } finally {
-            Network.getInstance().getController().refreshLocalFileList();
+            Network.getInstance().getController().refreshLocalFilesList();
             ReferenceCountUtil.release(msg);
         }
     }

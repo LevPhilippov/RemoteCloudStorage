@@ -2,7 +2,9 @@ package com.filippov;
 
 import lombok.Getter;
 
+import java.io.File;
 import java.io.Serializable;
+import java.nio.file.Path;
 import java.util.List;
 
 @Getter
@@ -14,11 +16,20 @@ public class Request implements Serializable {
 
     private RequestType requestType;
     private RequestType answerType;
-    private String serverPath;
-    private String clientPath;
-    private List<String> fileList;
+    private File serverPath;
+    private File clientPath;
+    private List<File> fileList;
 
-    public Request setRequestType(Request.RequestType requestType){
+    public Request(RequestType requestType, RequestType answerType, File serverPath, List<File> fileList) {
+        this.requestType = requestType;
+        this.answerType = answerType;
+        this.serverPath = serverPath;
+        this.fileList = fileList;
+    }
+
+    public Request() {}
+
+        public Request setRequestType(Request.RequestType requestType){
         this.requestType = requestType;
         return this;
     }
@@ -28,16 +39,16 @@ public class Request implements Serializable {
         return this;
     }
 
-    public Request setServerPath(String serverPath) {
+    public Request setServerPath(File serverPath) {
         this.serverPath = serverPath;
         return this;
     }
-    public Request setClientPath(String clientPath) {
+    public Request setClientPath(File clientPath) {
         this.clientPath = clientPath;
         return this;
     }
 
-    public Request setFileList (List<String> fileList) {
+    public Request setFileList (List<File> fileList) {
         this.fileList = fileList;
         return this;
     }

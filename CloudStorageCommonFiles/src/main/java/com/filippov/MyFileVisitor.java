@@ -1,36 +1,46 @@
 package com.filippov;
 
+import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.FileVisitor;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 
 public class MyFileVisitor implements FileVisitor<Path> {
 
-    String localPath;
-    String targetPath;
+    Path baseLocalPath;
+    Path baseTargetPath;
     io.netty.channel.Channel channel;
+    Request.RequestType requestType;
 
-    public MyFileVisitor(String localPath, String targetPath, io.netty.channel.Channel channel) {
-        this.localPath = localPath;
-        this.targetPath = targetPath;
+    public MyFileVisitor(File localPath, File baseTargetPath, io.netty.channel.Channel channel, Request.RequestType requestType) {
+        this.baseLocalPath = localPath.toPath();
+        this.baseTargetPath = baseTargetPath.toPath();
         this.channel = channel;
+        this.requestType = requestType;
+        System.out.println("Локальный путь " + localPath);
+        System.out.println("Целевой путь " + baseTargetPath);
     }
 
     @Override
     public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-        localPath = dir.toString();
-        targetPath = targetPath + "/" + dir.getFileName().toString();
-        System.out.println("Зашли в local- директорию : " + localPath);
-        System.out.println("Зашли в target-директорию : " + targetPath);
         return FileVisitResult.CONTINUE;
     }
 
     @Override
     public  FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        CloudWrappedObject.writeIntoChannel(file, targetPath, localPath, channel);
+        switch (requestType){
+            case GETFILES:{
+                Path targetPath = Paths.get(baseTargetPath.toString() + '/' + baseLocalPath.relativize(file).toString());
+                System.out.println("targetPath" + targetPath);
+                WrappedFileHandler.parseToSend(file, targetPath, channel);
+                break;
+            }
+            case DELETEFILES:{
+                Files.delete(file);
+                break;
+            }
+            default: break;
+        }
         return FileVisitResult.CONTINUE;
     }
 
@@ -42,10 +52,11 @@ public class MyFileVisitor implements FileVisitor<Path> {
 
     @Override
     public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-        localPath = dir.getParent().toString();
-        targetPath = Paths.get(targetPath).getParent().toString();
-        System.out.println("Вышли из local-директории сервера: " + localPath);
-        System.out.println("Вышли из target-дериктории клиента: " + targetPath);
+        switch (requestType){
+            case DELETEFILES: Files.delete(dir);
+            break;
+            default:break;
+        }
         return FileVisitResult.CONTINUE;
     }
 }

@@ -28,4 +28,7 @@
         <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#disconnest"/>
         <Button fx:id="getFIlesButton" text="Pull" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#requestFile"/>
     </HBox>
+    <HBox>
+        <Button fx:id="delete" text="Delete" minWidth="100" onAction="#delete"/>
+    </HBox>
 </VBox>

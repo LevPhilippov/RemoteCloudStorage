@@ -2,34 +2,46 @@ package com.filippov;
 
 
 import java.io.File;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.SortedMap;
 
 public class PathHolder {
 
     private final String clientRootPath = "CloudStorageClientV2/Storage";
     private final String serverRootPath = "CloudStorageServer/Storage";
-    private String clientPath;
-    private String serverPath;
+    private File clientPath;
+    private File serverPath;
+    private final HashMap <String, File> clientPathMap = new HashMap<>();
+    private final HashMap <String, File> serverPathMap = new HashMap<>();
 
     public PathHolder() {
-        this.clientPath = clientRootPath;
-        this.serverPath = serverRootPath;
-//        System.out.println(targetPath);
-//        System.out.println(clientRootPath);
+        this.clientPath = new File(clientRootPath);
     }
 
-    public String getClientPath() {
+    public File getClientPath() {
         return clientPath;
     }
 
-    public void setClientPath(String clientPath) {
+    public void setClientPath(File clientPath) {
         this.clientPath = clientPath;
     }
 
-    public String getServerPath() {
+    public File getServerPath() {
         return serverPath;
     }
 
-    public void setServerPath(String serverPath) {
+    public void setServerPath(File serverPath) {
         this.serverPath = serverPath;
     }
+
+    public HashMap<String, File> getClientPathMap() {
+        return clientPathMap;
+    }
+
+    public HashMap<String, File> getServerPathMap() {
+        return serverPathMap;
+    }
 }
+

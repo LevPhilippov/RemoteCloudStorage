@@ -21,10 +21,10 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                 RequestHandler.parse((Request)msg, ctx);
             }
             else {
-                CloudWrappedObject cwo = (CloudWrappedObject) msg;
-                System.out.println(cwo.getMsg());
+                WrappedFile wrappedFile = (WrappedFile) msg;
+                System.out.println(wrappedFile.getMsg());
                 System.out.println("Отправляю в парсер объектов!");
-                CWOHandler.parse(cwo);
+                WrappedFileHandler.parseToSave(wrappedFile);
             }
         } finally {
             ReferenceCountUtil.release(msg);
