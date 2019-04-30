@@ -33,18 +33,18 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        try {
-            Class.forName("com.filippov.Network");
-            network = Network.getInstance();
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        //network binding
+        network = Network.getInstance();
+        network.setController(this);
+        //listview setting
         localListView.setManaged(true);
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        refreshLocalFilesList();
         setListenersOnListView();
+        //refresh lists
+        refreshLocalFilesList();
+        network.requestFilesListFromServer();
     }
 
     private void setListenersOnListView() {
@@ -73,7 +73,7 @@ public class Controller implements Initializable {
                     File path = new File(pathHolder.getServerPath().toString() + '/' + serverListView.getSelectionModel().getSelectedItem());
                     pathHolder.setServerPath(path);
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
-                    Network.getInstance().requestFilesList();
+                    Network.getInstance().requestFilesListFromServer();
                 }
             }
         });
@@ -103,12 +103,10 @@ public class Controller implements Initializable {
 
     public void connect() {
         Network.setController(this);
-        network.startNetwork();
     }
 
     public void disconnest() {
         Platform.runLater(() -> Network.getInstance().shutdown());
-        Platform.exit();
     }
 
     public void refreshServerFileList(List<File> serverFileList) {
@@ -128,12 +126,12 @@ public class Controller implements Initializable {
 
     public void requestFile() {
         ObservableList<String> os = serverListView.getSelectionModel().getSelectedItems();
-        network.sendRequest(os, Request.RequestType.GETFILES);
+        network.sendFilesRequest(os, Request.RequestType.GETFILES);
     }
 
     public void stepBackServerPath(){
         network.getPathHolder().setServerPath(new File(network.getPathHolder().getServerPath().getParent()));
-        network.requestFilesList();
+        network.requestFilesListFromServer();
     }
 
     public void stepBackClientPath(){
@@ -159,11 +157,14 @@ public class Controller implements Initializable {
         observableList = serverListView.getSelectionModel().getSelectedItems();
         if (!observableList.isEmpty()) {
             System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
-            network.sendRequest(observableList, Request.RequestType.DELETEFILES);
+            network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
         }
         refreshLocalFilesList();
-        network.requestFilesList();
+        network.requestFilesListFromServer();
     }
 
-
+    public void closeApp() {
+        Platform.runLater(() -> Network.getInstance().shutdown());
+        Platform.exit();
+    }
 }

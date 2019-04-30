@@ -1,5 +1,9 @@
-package com.filippov;
+package com.filippov.Handlers;
 
+import com.filippov.Request;
+import com.filippov.RequestHandler;
+import com.filippov.WrappedFile;
+import com.filippov.WrappedFileHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;

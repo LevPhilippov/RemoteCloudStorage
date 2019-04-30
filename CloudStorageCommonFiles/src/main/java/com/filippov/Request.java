@@ -11,8 +11,9 @@ import java.util.List;
 public class Request implements Serializable {
 
     public enum RequestType {
-        ANSWER, AUTH, FILELIST, GETFILES, ECHO, DELETEFILES;
+        ANSWER, AUTH, AUTH_SUCCESS, FILELIST, GETFILES, ECHO, DELETEFILES;
     }
+
 
     private RequestType requestType;
     private RequestType answerType;

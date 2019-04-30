@@ -1,5 +1,6 @@
 package com.filippov.Handlers;
 
+import com.filippov.ClientMain;
 import com.filippov.Network;
 import com.filippov.Request;
 import io.netty.channel.ChannelHandlerContext;
@@ -20,6 +21,10 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
                     Network.getInstance().getPathHolder().setServerPath(request.getServerPath());
                     Network.getInstance().getController().refreshServerFileList(request.getFileList());
                     break;
+                }
+                case AUTH_SUCCESS: {
+                    System.out.println("Авторизация успешна!");
+                    ClientMain.clientMain.setMainScene();
                 }
                 default: {
                     System.out.println("Неизвестный ответ");

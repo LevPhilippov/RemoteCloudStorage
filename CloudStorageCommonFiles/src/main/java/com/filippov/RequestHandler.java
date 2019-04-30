@@ -1,17 +1,12 @@
 package com.filippov;
 
 import io.netty.channel.Channel;
-import io.netty.channel.ChannelFuture;
-import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
-import java.util.function.Consumer;
 
 public class RequestHandler {
 
@@ -21,11 +16,14 @@ public class RequestHandler {
                 break;
             case GETFILES:
                 System.out.println("Получен запрос на отправку файлов: " + request.getFileList());
-                tryTo(request, ctx);
+                filesWork(request, ctx);
                 break;
             case DELETEFILES:
                 System.out.println("Удаление файлов! " + request.getFileList().toString());
-                tryTo(request, ctx);
+                filesWork(request, ctx);
+                break;
+            case AUTH:
+                System.out.println("Запрос авторизации!");
                 break;
             default:
                 System.out.println("Неизвестный тип Request");
@@ -55,28 +53,18 @@ public class RequestHandler {
         System.out.println("Запрошенный путь  " + request.getServerPath() + " не является каталогом");
     }
 
+    /**
+     * Записывает в канал объект авторизации с хэшированными логином и паролем
+     * Хэширование выполяется автоматически в объекте AuthData
+     * */
+    public static void hashAndSendAuthData(String login, String password, Channel channel) {
+        System.out.println("Отправлены авторизационные данные!");
+        channel.writeAndFlush(new AuthData(login, password));
+    }
 
-//    public static void writeFilesIntoChannel(Request request, ChannelHandlerContext ctx) {
-//        List<File> filesList = request.getFileList();
-//        System.out.println("Получен запрос на отправку файлов: " + filesList);
-//        filesList.stream().map((file) -> file.toPath()).forEach(path -> {
-//            if(Files.exists(path)) {
-//                System.out.println("Файл " + path.getFileName().toString() + " найден!");
-//                try {
-//                    Files.walkFileTree(path, new MyFileVisitor(request.getServerPath(), request.getClientPath(), ctx.channel(), Request.RequestType.GETFILES));
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//        });
-//    }
 
-//    public static void deleteFiles(Request request) {
-//        System.out.println("Удаление файлов! " + request.getFileList().toString());
-//        request.getFileList().stream().map((file -> file.toPath())).forEach();
-//    }
 
-    public static void tryTo (Request request, ChannelHandlerContext ctx) {
+    public static void filesWork(Request request, ChannelHandlerContext ctx) {
         request.getFileList().stream().map((file) -> file.toPath()).forEach(path -> {
             if(Files.exists(path)) {
                 System.out.println("Файл " + path.getFileName().toString() + " найден!");

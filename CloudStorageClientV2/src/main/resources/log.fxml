@@ -1,0 +1,17 @@
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.text.Text?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Label?>
+<VBox fx:controller="com.filippov.LogController"
+      xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000">
+    <VBox fx:id="loginScreen" visible="true">
+        <Label text="Пожалуйста авторизуйтесь"/>
+        <TextField fx:id="loginField" promptText="Введите логин"/>
+        <PasswordField fx:id="passwordField" promptText="Введеите пароль"/>
+        <Button fx:id="but" text="Auth" onAction="#tryAuth"/>
+    </VBox>
+</VBox>

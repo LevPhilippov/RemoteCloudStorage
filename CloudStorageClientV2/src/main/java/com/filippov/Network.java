@@ -35,12 +35,13 @@ public class Network{
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     private static Controller controller;
+    private static Thread networkThread;
 
 
-    public void startNetwork() {
+    public void startNetwork(LogController logController) {
         bossGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap();
-        Thread networkThread = new Thread(new Runnable() {
+        networkThread = new Thread(new Runnable() {
             @Override
             public void run(){
                 try {
@@ -69,15 +70,19 @@ public class Network{
                             System.out.println("Connnection failed!");
                         } else {
                             System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
-                            requestFilesList();
+                            //метод на изменение статуса сети
+//                            requestFilesListFromServer(); - после авторизации не сервер отправляет список файлов автоматически
+                            requestAuth(logController);
                         }
 
                     }).sync();
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
+                    System.out.println("Thread interruption exeption!");
                     e.printStackTrace();
                 } catch (SSLException o) {
-
+                    System.out.println("SSL Exception!");
+                    o.printStackTrace();
                 }
                 finally {
                     shutdown();
@@ -86,6 +91,14 @@ public class Network{
         });
         networkThread.setDaemon(true);
         networkThread.start();
+    }
+
+    public void requestAuth(LogController logController) {
+        if(networkThread == null) {
+            startNetwork(logController);
+        } else if (networkThread.isAlive()) {
+            RequestHandler.hashAndSendAuthData(logController.getLoginField().getText(), logController.getPasswordField().getText(), cf.channel());
+        }
     }
 
     public void shutdown() {
@@ -107,9 +120,7 @@ public class Network{
                     }
                 }
             }));
-        System.out.println("В конце директория клиента: " + pathHolder.getClientPath());
-        System.out.println("В конце директория сервера: " + pathHolder.getServerPath());
-        requestFilesList();
+        requestFilesListFromServer();
     }
 
     /**
@@ -117,12 +128,12 @@ public class Network{
      *
      * */
 
-    public void requestFilesList() {
+    public void requestFilesListFromServer() {
         System.out.println("Запрашиваю список файлов в каталоге " + pathHolder.getServerPath());
         cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(pathHolder.getServerPath()));
     }
 
-    public void sendRequest(ObservableList<String> os, Request.RequestType requestType) {
+    public void sendFilesRequest(ObservableList<String> os, Request.RequestType requestType) {
         List <File> filesList = new ArrayList<>();
         os.stream().filter(pathHolder.getServerPathMap()::containsKey).forEach((key) -> {
             filesList.add(pathHolder.getServerPathMap().get(key));
@@ -147,5 +158,4 @@ public class Network{
     public static void setController(Controller controller) {
         Network.controller = controller;
     }
-
 }

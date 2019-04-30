@@ -3,12 +3,13 @@
 <?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.text.Text?>
-<?import javafx.scene.control.TextArea?>
 <?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.PasswordField?>
 <VBox fx:controller="com.filippov.Controller"
-      xmlns:fx="http://javafx.com/fxml" alignment="center"  maxWidth="1000" maxHeight="1000">
+      xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000">
+    <VBox fx:id="mainScreen" visible="true">
     <Text fx:id="serverConnectionStatus" text="You are ofline"  textAlignment="CENTER"/>
-    <HBox >
+    <HBox>
         <VBox HBox.hgrow="ALWAYS">
             <TextField  fx:id="serverFolder" promptText="ServerPath" disable="true"/>
             <ListView fx:id="serverListView" />
@@ -30,5 +31,7 @@
     </HBox>
     <HBox>
         <Button fx:id="delete" text="Delete" minWidth="100" onAction="#delete"/>
+        <Button fx:id="CloseApp" text="EXIT" minWidth="100" onAction="#closeApp"/>
     </HBox>
+    </VBox>
 </VBox>
