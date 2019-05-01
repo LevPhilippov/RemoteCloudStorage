@@ -25,6 +25,7 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
                 case AUTH_SUCCESS: {
                     System.out.println("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
+                    break;
                 }
                 default: {
                     System.out.println("Неизвестный ответ");

@@ -21,6 +21,7 @@ public class WrappedFile implements Serializable {
     private String fileName;
     private File localPath;
     private File targetPath;
+    private File homeDir;
     private String msg;
 
     public enum TypeEnum {
@@ -63,6 +64,11 @@ public class WrappedFile implements Serializable {
     }
     public WrappedFile setChunksInFile(long chunksInFile) {
         this.chunkslsInFile = chunksInFile;
+        return this;
+    }
+
+    public WrappedFile setHomeDir(File homeDir) {
+        this.homeDir = homeDir;
         return this;
     }
 }
