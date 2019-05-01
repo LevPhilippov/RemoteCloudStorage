@@ -1,23 +1,25 @@
 package com.filippov;
 
 
+import org.apache.commons.codec.digest.DigestUtils;
+
 import java.io.Serializable;
 
 public class AuthData implements Serializable {
 
-    private long loginHash;
-    private long passwordHash;
+    private String login;
+    private String password;
 
     public AuthData(String login, String password) {
-        this.loginHash = login.hashCode();
-        this.passwordHash = password.hashCode();
+        this.login = DigestUtils.md5Hex(login);
+        this.password = DigestUtils.md5Hex(password);
     }
 
-    public long getLoginHash() {
-        return loginHash;
+    public String getLogin() {
+        return login;
     }
 
-    public long getPasswordHash() {
-        return passwordHash;
+    public String getPassword() {
+        return password;
     }
 }

@@ -3,6 +3,7 @@ package com.filippov;
 import com.filippov.Handlers.AuthHandler;
 import com.filippov.Handlers.ObjectInboundHandler;
 import com.filippov.Handlers.ServerChannelInitializer;
+import com.filippov.HibernateUtils.HibernateSessionFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
@@ -16,6 +17,7 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import org.hibernate.Session;
 
 public class Server {
     ChannelFuture channelFuture;
@@ -23,10 +25,6 @@ public class Server {
     public void run() throws Exception {
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
-        // Configure SSL
-        SelfSignedCertificate ssc = new SelfSignedCertificate();  //-What is it?
-        SslContext sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
-        //SSL
         try {
             ServerBootstrap bootstrap = new ServerBootstrap();
             bootstrap.group(bossGroup,workerGroup)
@@ -47,6 +45,9 @@ public class Server {
 
         } catch (InterruptedException e) {
             e.printStackTrace();
+            workerGroup.shutdownGracefully();
+            bossGroup.shutdownGracefully();
+        } finally {
             workerGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
         }
