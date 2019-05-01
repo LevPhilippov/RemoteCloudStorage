@@ -16,10 +16,9 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
         if(autorizedClient)
             ctx.fireChannelRead(msg);
         else {
-            if(msg instanceof AuthData) {
+            if(msg instanceof AuthData && Utils.checkAuthData((AuthData)msg)) {
                 autorizedClient = true;
                 System.out.println("Клиент авторизован");
-                Utils.write((AuthData)msg);
                 ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
             }
             else {
@@ -29,8 +28,8 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
             ReferenceCountUtil.release(msg);
         }
 
-        if (autorizationCounter>=3) {
-            ctx.channel().closeFuture().sync();
+        if (autorizationCounter>3) {
+            ctx.channel().closeFuture().sync(); //как закрыть соединение отсюда???
         }
     }
 }

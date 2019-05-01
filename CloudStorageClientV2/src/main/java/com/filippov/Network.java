@@ -95,8 +95,10 @@ public class Network{
 
     public void requestAuth(LogController logController) {
         if(networkThread == null) {
+            System.out.println("Запускаю сеть!");
             startNetwork(logController);
         } else if (networkThread.isAlive()) {
+            System.out.println("Сеть жива! отправляю запрос!");
             RequestHandler.hashAndSendAuthData(logController.getLoginField().getText(), logController.getPasswordField().getText(), cf.channel());
         }
     }

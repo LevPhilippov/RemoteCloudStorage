@@ -79,15 +79,6 @@ public class WrappedFileHandler {
         }
     }
 
-//    public static WrappedFile wrapFile(Path baseLocalPath, Path baseTargetPath) throws IOException {
-//        System.out.println("-----------------------------");
-//        System.out.printf("Wrapping object %s in directory %s into %s Server Folder: ", baseLocalPath.getFileName().toString(), baseLocalPath.toString(), baseTargetPath.toString());
-//        byte[] bytes = null;
-//        bytes = Files.readAllBytes(baseLocalPath);
-//        System.out.println("Байтов прочитано " + bytes.length);
-//        WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes, baseTargetPath);
-//        return wrappedFile;
-//    }
 
     public static void wrapAndWriteFile(Path localPath, Path targetPath, Channel channel) {
         System.out.printf("Файл %s будет записан в канал и размещен в папке %s ", localPath.getFileName().toString(), targetPath.toString());
