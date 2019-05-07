@@ -38,14 +38,13 @@ public class Network{
     private static Thread networkThread;
 
 
-    public void startNetwork(LogController logController) {
+    public void startNetwork(String login, String password) {
         bossGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap();
         networkThread = new Thread(new Runnable() {
             @Override
             public void run(){
                 try {
-                    ;
                     // Configure SSL.
                     final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
                     //SSL
@@ -56,7 +55,7 @@ public class Network{
                             socketChannel.pipeline().addLast(
                                     sslCtx.newHandler(socketChannel.alloc(), HOST, PEER_PORT),
                                     new LoggingHandler("EndLogger", LogLevel.INFO),
-                                    new ObjectDecoder(WrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
+                                    new ObjectDecoder(ClientWrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
                                     new ObjectInboundHandler(),
                                     new ClientAnswerHandler()
@@ -71,8 +70,7 @@ public class Network{
                         } else {
                             System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
                             //метод на изменение статуса сети
-//                            requestFilesListFromServer(); - после авторизации не сервер отправляет список файлов автоматически
-                            requestAuth(logController);
+                            requestAuth(login, password);
                         }
 
                     }).sync();
@@ -93,13 +91,14 @@ public class Network{
         networkThread.start();
     }
 
-    public void requestAuth(LogController logController) {
+    public void requestAuth(String login, String password) {
         if(networkThread == null) {
             System.out.println("Запускаю сеть!");
-            startNetwork(logController);
+            startNetwork(login, password);
         } else if (networkThread.isAlive()) {
-            System.out.println("Сеть жива! отправляю запрос!");
-            RequestHandler.hashAndSendAuthData(logController.getLoginField().getText(), logController.getPasswordField().getText(), cf.channel());
+            System.out.println("Отправлены авторизационные данные!");
+            AuthData authData = new AuthData(login, password);
+            cf.channel().writeAndFlush(authData);
         }
     }
 
@@ -109,13 +108,15 @@ public class Network{
     }
 
     /**
-     * Принимает на вход список имен файлов в директории, где находится клиент выполняет запись этих файлов в канал
+     * Принимает на вход список Path и команду {@link Request} на их обработку.
+     * @param os  List String-ключей для ClientMap
+     * @param requestType  команда для обработки списка файлов
      * */
-    public void writeFilesIntoChannel(ObservableList<String> os, Request.RequestType requestType) {
-            os.stream().map((s) -> Paths.get(pathHolder.getClientPath() + "/" + s)).forEach((path -> {
+    public void filesHandler(ObservableList<String> os, Request.RequestType requestType) {
+            os.stream().map(pathHolder.getClientPathMap()::get).forEach((path -> {
                 if (Files.exists(path)) {
                     try {
-                        Files.walkFileTree(path, new MyFileVisitor(pathHolder.getClientPath(), pathHolder.getServerPath(), cf.channel(), requestType)
+                        Files.walkFileTree(path, new MyFileVisitor(PathHolder.baseLocalPath, cf.channel(), requestType)
                         );
                     } catch (IOException e) {
                         e.printStackTrace();
@@ -131,22 +132,18 @@ public class Network{
      * */
 
     public void requestFilesListFromServer() {
-        System.out.println("Запрашиваю список файлов в каталоге " + pathHolder.getServerPath());
-        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(pathHolder.getServerPath()));
+        Request request = new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(pathHolder.getServerPath().toFile());
+        cf.channel().writeAndFlush(request);
     }
 
     public void sendFilesRequest(ObservableList<String> os, Request.RequestType requestType) {
         List <File> filesList = new ArrayList<>();
-        os.stream().filter(pathHolder.getServerPathMap()::containsKey).forEach((key) -> {
-            filesList.add(pathHolder.getServerPathMap().get(key));
-        });
+        os.stream().map(key -> pathHolder.getServerPathMap().get(key).toFile()).forEach(filesList::add);
 
         System.out.println("Запрос файлов из облака " + filesList);
         cf.channel().writeAndFlush(new Request()
                 .setRequestType(requestType)
-                .setServerPath(pathHolder.getServerPath())
-                .setFileList(filesList)
-                .setClientPath(pathHolder.getClientPath()));
+                .setFileList(filesList));
     }
 
     public PathHolder getPathHolder() {
@@ -160,4 +157,8 @@ public class Network{
     public static void setController(Controller controller) {
         Network.controller = controller;
     }
+
+
+
+
 }

@@ -13,9 +13,10 @@ import java.nio.file.Paths;
 
 public class Server {
     ChannelFuture channelFuture;
-    public static final Path rootPath = Paths.get("","Storage");
+    public static final Path rootPath = Paths.get("","ServerStorage").toAbsolutePath();
 
     public void run() throws Exception {
+        System.out.println(rootPath.toAbsolutePath().toString());
 
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();

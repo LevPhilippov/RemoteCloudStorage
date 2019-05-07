@@ -11,15 +11,16 @@ import java.util.List;
 public class Request implements Serializable {
 
     public enum RequestType {
-        ANSWER, AUTH, AUTH_SUCCESS, FILELIST, GETFILES, ECHO, DELETEFILES;
+        ANSWER, AUTH, AUTH_SUCCESS, FILELIST, GETFILES, SENDFILES, DELETEFILES, CREATE_FOLDER;
     }
 
 
     private RequestType requestType;
     private RequestType answerType;
     private File serverPath;
-    private File clientPath;
+//    private File clientPath;
     private List<File> fileList;
+    private String login;
 
     public Request(RequestType requestType, RequestType answerType, File serverPath, List<File> fileList) {
         this.requestType = requestType;
@@ -44,13 +45,21 @@ public class Request implements Serializable {
         this.serverPath = serverPath;
         return this;
     }
-    public Request setClientPath(File clientPath) {
-        this.clientPath = clientPath;
-        return this;
-    }
+//    public Request setClientPath(File clientPath) {
+//        this.clientPath = clientPath;
+//        return this;
+//    }
 
     public Request setFileList (List<File> fileList) {
         this.fileList = fileList;
         return this;
+    }
+
+    public String getLogin() {
+        return login;
+    }
+
+    public void setLogin(String login) {
+        this.login = login;
     }
 }

@@ -1,5 +1,6 @@
 package com.filippov;
 
+import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 
@@ -7,9 +8,12 @@ import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.nio.file.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 
-public class WrappedFileHandler {
+public class ClientWrappedFileHandler{
 
     public static int byteBufferSize = 1024*1024*5;
 
@@ -86,13 +90,11 @@ public class WrappedFileHandler {
         try {
             byte[] bytes = null;
             bytes = Files.readAllBytes(localPath);
-//            System.out.println("Байтов прочитано " + bytes.length);
 
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
                     localPath.getFileName().toString(), targetPath.toFile());
 
-//            WrappedFile wrappedFile = wrapFile(baseLocalPath, baseTargetPath);
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");
             });

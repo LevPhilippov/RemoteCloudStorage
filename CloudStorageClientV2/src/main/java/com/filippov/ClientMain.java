@@ -20,11 +20,12 @@ public class ClientMain extends Application {
     public void start(Stage primaryStage) throws Exception{
         clientMain=this;
         this.primaryStage = primaryStage;
-        root = FXMLLoader.load(getClass().getResource("/log.fxml"));
-        primaryStage.setTitle("Cloud");
-        primaryStage.setScene(new Scene(root, 300, 200));
-        primaryStage.setResizable(false);
-        primaryStage.show();
+//        root = FXMLLoader.load(getClass().getResource("/log.fxml"));
+//        primaryStage.setTitle("Cloud");
+//        primaryStage.setScene(new Scene(root, 300, 200));
+//        primaryStage.setResizable(false);
+//        primaryStage.show();
+        setMainScene();
     }
 
     public void setMainScene(){

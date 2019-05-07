@@ -23,7 +23,7 @@ public class LogController implements Initializable {
 
     public void tryAuth() {
         try {
-            Network.getInstance().requestAuth(this);
+            Network.getInstance().requestAuth(loginField.getText(), passwordField.getText());
         } catch (Exception e) {
             e.printStackTrace();
         }

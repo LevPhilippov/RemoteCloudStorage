@@ -17,17 +17,13 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                     ctx.fireChannelRead(request);
                     return;
                 }
-                System.out.println("Получен запрос! Отправляю в парсер запросов!");
-                RequestHandler.parse((Request)msg, ctx);
             }
             else {
                 WrappedFile cwo = (WrappedFile) msg;
-                System.out.println(cwo.getMsg());
                 System.out.println("Отправляю в парсер объектов!");
-                WrappedFileHandler.parseToSave(cwo);
+                ClientWrappedFileHandler.parseToSave(cwo);
             }
         } finally {
-//            Network.getInstance().getController().refreshLocalFilesList();
             ReferenceCountUtil.release(msg);
         }
     }

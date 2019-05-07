@@ -13,11 +13,12 @@ import java.util.List;
 
 public class Factory {
 
-    public static List<File> giveFileList(File file) {
-        List<File> fileList = new ArrayList<>();
+    public static List<Path> giveFileList(Path path) {
+        List<Path> fileList = new ArrayList<>();
+        System.out.println(path.toString());
         try {
-            Files.walk(file.toPath(),1).forEach(p -> {
-                fileList.add(p.toFile());
+            Files.walk(path,1).forEach(p -> {
+                fileList.add(p);
             });
         } catch (IOException e) {
             e.printStackTrace();

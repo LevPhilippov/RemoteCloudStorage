@@ -1,13 +1,9 @@
 package com.filippov;
 
-import io.netty.channel.Channel;
-import io.netty.channel.ChannelFutureListener;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
 
 @Getter
 @Setter
@@ -15,14 +11,13 @@ public class WrappedFile implements Serializable {
 
     private TypeEnum typeEnum;
     private byte[] bytes;
-    //private long hashSum;
     private long chunkNumber;
     private long chunkslsInFile;
     private String fileName;
     private File localPath;
     private File targetPath;
-    private File homeDir;
-    private String msg;
+    //Не передавать login по каналу! Использовать только на сервере! Дописывать в AuthHandlere-e.
+    private String login;
 
     public enum TypeEnum {
         FILE, CHUNKED
@@ -67,8 +62,8 @@ public class WrappedFile implements Serializable {
         return this;
     }
 
-    public WrappedFile setHomeDir(File homeDir) {
-        this.homeDir = homeDir;
+    public WrappedFile setLogin(String login) {
+        this.login = login;
         return this;
     }
 }

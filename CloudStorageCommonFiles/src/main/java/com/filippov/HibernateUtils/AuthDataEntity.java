@@ -4,14 +4,24 @@ import javax.persistence.*;
 import java.util.Objects;
 
 @Entity
-@Table(name = "authdatatable", schema = "cloudstoragedb", catalog = "")
+@Table(name = "authdata", schema = "cloudstoragedb", catalog = "")
 public class AuthDataEntity {
+    private int id;
     private String login;
     private String password;
 
-    @Basic
     @Id
-    @Column(name = "login", nullable = true, length = 128)
+    @Column(name = "id", nullable = false)
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Basic
+    @Column(name = "login", nullable = false, length = 128)
     public String getLogin() {
         return login;
     }
@@ -21,7 +31,7 @@ public class AuthDataEntity {
     }
 
     @Basic
-    @Column(name = "password", nullable = true, length = 128)
+    @Column(name = "password", nullable = false, length = 128)
     public String getPassword() {
         return password;
     }
@@ -35,12 +45,13 @@ public class AuthDataEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AuthDataEntity that = (AuthDataEntity) o;
-        return Objects.equals(login, that.login) &&
+        return id == that.id &&
+                Objects.equals(login, that.login) &&
                 Objects.equals(password, that.password);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(login, password);
+        return Objects.hash(id, login, password);
     }
 }

@@ -1,6 +1,6 @@
 package com.filippov.Handlers;
 
-import com.filippov.WrappedFileHandler;
+import com.filippov.ServerWrappedFileHandler;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
@@ -25,7 +25,7 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
                     sslCtx.newHandler(socketChannel.alloc()),
                     new LoggingHandler("commonLog", LogLevel.INFO),
                     new ObjectEncoder(),
-                    new ObjectDecoder(WrappedFileHandler.byteBufferSize + 1024 * 1024, ClassResolvers.cacheDisabled(null)),
+                    new ObjectDecoder(ServerWrappedFileHandler.byteBufferSize + 1024 * 1024, ClassResolvers.cacheDisabled(null)),
                     new AuthHandler(),
                     new ObjectInboundHandler());
     }

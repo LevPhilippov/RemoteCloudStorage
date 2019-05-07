@@ -11,6 +11,9 @@ import lombok.Getter;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.ResourceBundle;
 
@@ -44,7 +47,7 @@ public class Controller implements Initializable {
         setListenersOnListView();
         //refresh lists
         refreshLocalFilesList();
-        network.requestFilesListFromServer();
+//        network.requestFilesListFromServer();
     }
 
     private void setListenersOnListView() {
@@ -52,11 +55,11 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    File path = new File(network.getPathHolder().getClientPath().toString() + '/' + localListView.getSelectionModel().getSelectedItem());
-                    if(path.isDirectory()) {
+                    Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
+                    System.out.println(path.toString());
+                    if(Files.isDirectory(path)) {
                         System.out.println("Новый путь к директории клиента: " + path.toString());
-                        network.getPathHolder().setClientPath(path);
-
+                        network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
                         refreshLocalFilesList();
                         return;
                     }
@@ -69,9 +72,8 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    PathHolder pathHolder = Network.getInstance().getPathHolder();
-                    File path = new File(pathHolder.getServerPath().toString() + '/' + serverListView.getSelectionModel().getSelectedItem());
-                    pathHolder.setServerPath(path);
+                    Path path = Paths.get(network.getPathHolder().getServerPath().toString(), (String)serverListView.getSelectionModel().getSelectedItem());
+                    network.getPathHolder().setServerPath(path);
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
                     Network.getInstance().requestFilesListFromServer();
                 }
@@ -85,24 +87,24 @@ public class Controller implements Initializable {
             //обновление листа для клиента
             network.getPathHolder().getClientPathMap().clear();
             localListView.getItems().clear();
-            Factory.giveFileList(network.getPathHolder().getClientPath()).forEach((path)->{
-                network.getPathHolder().getClientPathMap().put(path.getName(),path);
+            Factory.giveFileList(Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString())).forEach((path)->{
+                network.getPathHolder().getClientPathMap().put(path.getFileName().toString(),path);
             });
             localListView.getItems().setAll(network.getPathHolder().getClientPathMap().keySet());
             clientFolder.setText(network.getPathHolder().getClientPath().toString());
         };
         refreshPattern(refresh);
-
     }
 
 
     public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().writeFilesIntoChannel(os, Request.RequestType.GETFILES);
+        network.filesHandler(os, Request.RequestType.SENDFILES);
     }
 
     public void connect() {
         Network.setController(this);
+        Network.getInstance().startNetwork("Suka", "Blyat");
     }
 
     public void disconnest() {
@@ -114,8 +116,8 @@ public class Controller implements Initializable {
             //обновление листа для сервера
             serverListView.getItems().clear();
             network.getPathHolder().getServerPathMap().clear();
-            serverFileList.stream().forEach((path) -> {
-                network.getPathHolder().getServerPathMap().put(path.getName(),path);
+            serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
+                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path);
 
             });
             serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
@@ -130,12 +132,13 @@ public class Controller implements Initializable {
     }
 
     public void stepBackServerPath(){
-        network.getPathHolder().setServerPath(new File(network.getPathHolder().getServerPath().getParent()));
+        network.getPathHolder().setServerPath(network.getPathHolder().getServerPath().getParent());
         network.requestFilesListFromServer();
     }
 
     public void stepBackClientPath(){
-        network.getPathHolder().setClientPath(new File(network.getPathHolder().getClientPath().getParent()));
+        Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString()).getParent();
+        network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
         refreshLocalFilesList();
     }
 
@@ -152,7 +155,7 @@ public class Controller implements Initializable {
         ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
         if(!observableList.isEmpty()) {
             System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
-            network.writeFilesIntoChannel(observableList, Request.RequestType.DELETEFILES);
+            network.filesHandler(observableList, Request.RequestType.DELETEFILES);
         }
         observableList = serverListView.getSelectionModel().getSelectedItems();
         if (!observableList.isEmpty()) {
