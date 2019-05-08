@@ -46,7 +46,7 @@ public class ServerWrappedFileHandler {
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка");
         // конструируем путь к файлу
-        String targetPath = wrappedFile.getTargetPath().toString();
+        String targetPath = wrappedFile.getTargetPath().getPath();
         String hash_file_name = DigestUtils.md5Hex(targetPath + wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
 
@@ -54,7 +54,7 @@ public class ServerWrappedFileHandler {
             try {
                 Files.createDirectories(path);
                 Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
-                Utils.createFileRecord(wrappedFile.getLogin(), targetPath, wrappedFile.getFileName(), hash_file_name);
+                Utils.createFileRecord(wrappedFile.getLogin(), targetPath, wrappedFile.getFileName(), hash_file_name, null);
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
                 e.printStackTrace();
@@ -71,7 +71,7 @@ public class ServerWrappedFileHandler {
 
     private static void saveFile(WrappedFile wrappedFile) {
         // конструируем путь к файлу
-        String targetPath = wrappedFile.getTargetPath().getParent();
+        String targetPath = wrappedFile.getTargetPath().getPath();
         System.out.println("TargetPath: " + targetPath);
         System.out.println("FileName: " + wrappedFile.getFileName());
         String hash_file_name = DigestUtils.md5Hex(targetPath + wrappedFile.getFileName());
@@ -81,7 +81,7 @@ public class ServerWrappedFileHandler {
                 Files.createDirectories(path.getParent());
                 Files.write(path, wrappedFile.getBytes());
                 System.out.println("Обращение к БД!.....................................");
-                Utils.createFileRecord(wrappedFile.getLogin(), targetPath, wrappedFile.getFileName(), hash_file_name);
+                Utils.createFileRecord(wrappedFile.getLogin(), targetPath, wrappedFile.getFileName(), hash_file_name, null);
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
                 e.printStackTrace();

@@ -94,6 +94,7 @@ public class ClientWrappedFileHandler{
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
                     localPath.getFileName().toString(), targetPath.toFile());
+            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
 
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");

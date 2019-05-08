@@ -58,7 +58,9 @@ public class Controller implements Initializable {
                     Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
                     System.out.println(path.toString());
                     if(Files.isDirectory(path)) {
+                        System.out.println("-----------------------------");
                         System.out.println("Новый путь к директории клиента: " + path.toString());
+                        System.out.println("-----------------------------");
                         network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
                         refreshLocalFilesList();
                         return;
@@ -97,6 +99,25 @@ public class Controller implements Initializable {
     }
 
 
+    public void refreshServerFileList(List<File> serverFileList) {
+        Runnable refresh = () -> {
+            //обновление листа для сервера
+            serverListView.getItems().clear();
+            network.getPathHolder().getServerPathMap().clear();
+            serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
+                System.out.println("Добавление в мапу /////////");
+                System.out.println("Имя файла: " + path.getFileName());
+                System.out.println("Путь:" + path.getParent());
+                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path.getParent());
+            });
+            System.out.println("Набор ключей: " + network.getPathHolder().getServerPathMap().keySet());
+            serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
+            if (network.getPathHolder().getServerPath()!=null)
+                serverFolder.setText(network.getPathHolder().getServerPath().toString());
+        };
+        refreshPattern(refresh);
+    }
+
     public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
         network.filesHandler(os, Request.RequestType.SENDFILES);
@@ -109,21 +130,6 @@ public class Controller implements Initializable {
 
     public void disconnest() {
         Platform.runLater(() -> Network.getInstance().shutdown());
-    }
-
-    public void refreshServerFileList(List<File> serverFileList) {
-        Runnable refresh = () -> {
-            //обновление листа для сервера
-            serverListView.getItems().clear();
-            network.getPathHolder().getServerPathMap().clear();
-            serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
-                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path);
-
-            });
-            serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
-            serverFolder.setText(network.getPathHolder().getServerPath().toString());
-        };
-        refreshPattern(refresh);
     }
 
     public void requestFile() {

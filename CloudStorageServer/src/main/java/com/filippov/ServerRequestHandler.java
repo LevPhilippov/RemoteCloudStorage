@@ -2,6 +2,7 @@ package com.filippov;
 
 import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.codec.digest.DigestUtils;
 
 import java.io.File;
 import java.util.List;
@@ -21,8 +22,14 @@ public class ServerRequestHandler{
                 System.out.println("Удаление файлов! " + request.getFileList().toString());
 //                filesWork(request, ctx);
                 break;
-            case CREATE_FOLDER:
-                Utils.createFolder();
+            case CREATE_FOLDER: {
+                String pathNameHash = DigestUtils.md5Hex(request.getServerPath().getName());
+                Utils.createFileRecord(request.getLogin(),
+                        request.getServerPath().getParent(),
+                        request.getServerPath().getName(),
+                        pathNameHash,
+                        request.getServerPath().getPath());
+            }
             default:
                 System.out.println("Неизвестный тип Request");
                 break;

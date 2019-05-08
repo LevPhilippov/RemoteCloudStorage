@@ -59,6 +59,7 @@ public class Utils {
         AuthDataEntity authDataEntity = getLoginID(session,login);
         System.out.println("Login is: " + authDataEntity.getLogin());
         System.out.println("Файл уже существует в БД?: " + isFileAlreadyExist(session, authDataEntity, pathNameHash));
+
         if (!isFileAlreadyExist(session, authDataEntity, pathNameHash)) {
             ///
             FilesEntity filesEntity = new FilesEntity();
@@ -71,6 +72,8 @@ public class Utils {
             session.beginTransaction();
             session.save(filesEntity);
             session.getTransaction().commit();
+        } else {
+            //здесь будет код на перезапись файла
         }
 
         session.close();
@@ -82,10 +85,16 @@ public class Utils {
         ///
         AuthDataEntity authDataEntity = getLoginID(session, login);
         System.out.println(authDataEntity.getLogin());
-        Query query = session.createQuery("from FilesEntity where authdataById =:paramName1 AND path =:paramName2");
-        path = path==null ? "root" : path;
+        Query query;
+
+        if (path == null) {
+            query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path IS NULL");
+        } else {
+            query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
+            query.setParameter("paramName2", path);
+        }
+
         query.setParameter("paramName1", authDataEntity);
-        query.setParameter("paramName2", path);
         List list = query.list();
         ///
         session.close();
@@ -96,8 +105,8 @@ public class Utils {
 
     private static List<File> FilesEntityToFile(List<FilesEntity> list) {
         List <File> filesList = new ArrayList<>();
-        for (int i = 0; i <list.size() ; i++) {
-            File file = new File(list.get(i).getFileName());
+        for (FilesEntity filesEntity : list) {
+            File file = new File(filesEntity.getPath(),filesEntity.getFileName());
             filesList.add(file);
         }
 //        list.stream().map(filesEntity -> new File(filesEntity.getFileName(), filesEntity.getPath())).forEach(filesList::add);
@@ -111,6 +120,4 @@ public class Utils {
         return !query.list().isEmpty();
 
     }
-
-
 }

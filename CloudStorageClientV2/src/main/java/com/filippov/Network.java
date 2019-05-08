@@ -116,7 +116,7 @@ public class Network{
             os.stream().map(pathHolder.getClientPathMap()::get).forEach((path -> {
                 if (Files.exists(path)) {
                     try {
-                        Files.walkFileTree(path, new MyFileVisitor(PathHolder.baseLocalPath, cf.channel(), requestType)
+                        Files.walkFileTree(path, new MyFileVisitor(cf.channel(), requestType)
                         );
                     } catch (IOException e) {
                         e.printStackTrace();
