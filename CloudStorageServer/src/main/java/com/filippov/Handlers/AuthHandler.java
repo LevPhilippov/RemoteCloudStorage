@@ -3,12 +3,15 @@ package com.filippov.Handlers;
 import com.filippov.AuthData;
 import com.filippov.HibernateUtils.Utils;
 import com.filippov.Request;
+import com.filippov.Server;
 import com.filippov.WrappedFile;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 
 public class AuthHandler extends ChannelInboundHandlerAdapter {
     private boolean autorizedClient;
@@ -34,6 +37,10 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
                 autorizedClient = true;
                 System.out.println("Клиент авторизован");
                 login = ((AuthData)msg).getLogin();
+                //создание директории пользователя
+                if (!Files.exists(Paths.get(Server.rootPath.toString(), login))) {
+                    Files.createDirectory(Paths.get(Server.rootPath.toString(), login));
+                }
                 ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
             }
             else {

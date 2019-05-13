@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.nio.file.attribute.FileAttribute;
 
 public class ServerWrappedFileHandler {
 
@@ -45,13 +46,13 @@ public class ServerWrappedFileHandler {
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка № " + wrappedFile.getChunkNumber() + " из " + wrappedFile.getChunkslsInFile());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName())+".cloud";
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
-                //если файла по этому адресу еще не существует
+//                если файла по этому адресу еще не существует
                 if(!Files.exists(path)) {
                     System.out.println("Записей не обнаружено! Создаю директории и пишу первый чанк!");
-                    Files.createDirectories(path);
+                    Files.createFile(path);
                     Files.write(path,wrappedFile.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                     return;
                 } else if (Files.exists(path) && wrappedFile.getChunkNumber()==1) {
@@ -71,7 +72,19 @@ public class ServerWrappedFileHandler {
                 System.out.printf("Запись обнаружена, пишется чанк %d из %d \n ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
                 //если ни то, ни другое
                 Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
-
+                /////////////////////////////////////////////////
+//                if(!Files.exists(path)) {
+//                    if (wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
+//                        System.out.println("Запись обнаружена, пишется последний чанк " + wrappedFile.getChunkNumber() + " Всего чанков: " + wrappedFile.getChunkslsInFile());
+//                        Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
+//                        System.out.println("Обращение к БД!.....................................");
+//                        Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getServerPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+//                        return;
+//                    }
+//                    System.out.println("Записей не обнаружено! Создаю директории и пишу чанки!");
+//                    Files.createDirectories(path);
+//                    Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
+//                }
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
                 e.printStackTrace();
@@ -88,14 +101,14 @@ public class ServerWrappedFileHandler {
 //        String targetPath = wrappedFile.getServerPath().getPath();
 //        System.out.println("TargetPath: " + targetPath);
 //        System.out.println("FileName: " + wrappedFile.getFileName());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName()) + ".cloud";
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
         System.out.println("Файл будет записан по адресу: " + path.toString());
         try {
             if(Files.exists(path)){
                 Files.delete(path);
             }
-                Files.createDirectories(path.getParent());
+//                Files.createDirectories(path.getParent());
                 Files.write(path, wrappedFile.getBytes());
                 System.out.println("Обращение к БД!.....................................");
                 Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getServerPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
