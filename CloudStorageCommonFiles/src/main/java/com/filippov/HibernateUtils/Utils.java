@@ -63,8 +63,6 @@ public class Utils {
         System.out.println("Запись в БД!");
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session,login);
-        System.out.println("Login is: " + authDataEntity.getLogin());
-        System.out.println("Файл уже существует в БД?: " + isFileAlreadyExist(session, authDataEntity, pathNameHash));
 
         if (!isFileAlreadyExist(session, authDataEntity, pathNameHash)) {
             ///
@@ -79,51 +77,26 @@ public class Utils {
             session.save(filesEntity);
             session.getTransaction().commit();
         } else {
-            //здесь будет код на перезапись файла
+            System.out.println("Запись уже существует!");
         }
-
         session.close();
     }
 
-    private static List<FilesEntity> filesEntityList (String login, File path) {
+    public static boolean deleteFileRecord(String login, File file) {
+        System.out.println("Удаление из БД!");
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
-        AuthDataEntity authDataEntity = getLoginID(session, login);
-        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
-        System.out.println(path.getPath());
-        query.setParameter("paramName2", path.getPath());
+        AuthDataEntity authDataEntity = getLoginID(session,login);
+        System.out.println("Login is: " + authDataEntity.getLogin());
+        Transaction tx = session.beginTransaction();
+        System.out.println("Удаляю файл: " + file);
+        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND pathNameHash =: paramName2");
         query.setParameter("paramName1", authDataEntity);
-        List list = query.list();
-//
-//        if(list.isEmpty()) {
-//            isThatDirectory(session, authDataEntity, path);
-//            session.close();
-//            return null;
-//        }
+        query.setParameter("paramName2", DigestUtils.md5Hex(file.getParent() + file.getName()));
+        System.out.println("Операция выполнено: " + query.executeUpdate());
+        tx.commit();
         session.close();
-        return list;
+        return true;
     }
-
-    public static List<File> fileList (String login, File path) {
-        List <FilesEntity> filesList = filesEntityList(login, path);
-//        if(filesList==null) {
-//            System.out.println("Запрошенный адрес является файлом!");
-//            return null;
-//        }
-        return FilesEntityToFile(filesList);
-    }
-
-//    private static boolean isThatDirectory(Session session, AuthDataEntity authDataEntity, File path) {
-//        //переделать под хэшнамепас
-//        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 " +
-//                                            "AND path =:paramName2 " +
-//                                            "AND file_name =:paramName3 " +
-//                                            "AND children IS NULL");
-//        query.setParameter("paramName3", path.getName());
-//        query.setParameter("paramName2", path.getParent());
-//        query.setParameter("paramName1", authDataEntity);
-//        List list = query.list();
-//        return list.isEmpty();
-//    }
 
     public static boolean isThatDirectory(String login, File file) {
         //если запрошен корень - просто возвращаем true
@@ -134,14 +107,23 @@ public class Utils {
         return filesEntity.getChildren()!=null;
     }
 
-    private static List<File> FilesEntityToFile(List<FilesEntity> list) {
+    public static List<File> fileList (String login, File path) {
+        List <FilesEntity> filesEntityList = filesEntityList(login, path);
         List <File> filesList = new ArrayList<>();
-        for (FilesEntity filesEntity : list) {
-            File file = new File(filesEntity.getPath(),filesEntity.getFileName());
-            filesList.add(file);
-        }
-//        list.stream().map(filesEntity -> new File(filesEntity.getFileName(), filesEntity.getPath())).forEach(filesList::add);
+        filesEntityList.stream().map(filesEntity -> new File(filesEntity.getPath(),filesEntity.getFileName())).forEach(filesList::add);
         return filesList;
+    }
+
+    private static List<FilesEntity> filesEntityList (String login, File path) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session, login);
+        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
+        System.out.println(path.getPath());
+        query.setParameter("paramName2", path.getPath());
+        query.setParameter("paramName1", authDataEntity);
+        List list = query.list();
+        session.close();
+        return list;
     }
 
     private static boolean isFileAlreadyExist(Session session, AuthDataEntity authDataEntity, String pathNameHash) {
@@ -168,28 +150,5 @@ public class Utils {
     public static Path getRecordPath(String login, File path) {
         FilesEntity filesEntity = isRecordExist(login, path);
         return Paths.get(login, filesEntity.getPathNameHash());
-    }
-
-
-
-//    public static Path getServerPath() {
-//
-//    }
-
-    public static boolean deleteFileRecord(String login, File file) {
-        System.out.println("Удаление из БД!");
-        Session session = HibernateSessionFactory.getSessionFactory().openSession();
-        AuthDataEntity authDataEntity = getLoginID(session,login);
-        System.out.println("Login is: " + authDataEntity.getLogin());
-        Transaction tx = session.beginTransaction();
-                    //УДАЛИТЬ ИЗ ПАПКИ!
-        System.out.println("Удаляю файл: " + file);
-        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND pathNameHash =: paramName2");
-        query.setParameter("paramName1", authDataEntity);
-        query.setParameter("paramName2", DigestUtils.md5Hex(file.getParent() + file.getName()));
-        System.out.println("Операция выполнено: " + query.executeUpdate());
-        tx.commit();
-        session.close();
-        return true;
     }
 }

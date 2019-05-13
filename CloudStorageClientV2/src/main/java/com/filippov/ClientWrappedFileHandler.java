@@ -113,7 +113,12 @@ public class ClientWrappedFileHandler{
             long chunkCounter = 1;
             long chunks=0;
             try {
-                chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
+                if(Files.size(localPath)%byteBufferSize == 0){
+                    chunks = Files.size(localPath)/byteBufferSize;
+                }
+                else {
+                    chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -129,10 +134,13 @@ public class ClientWrappedFileHandler{
 
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                         System.out.println("Writing Complete!");
-                    });
+                    }).sync();
+                    System.out.printf("Записан чанк %d из %d\n", chunkCounter, chunks);
                     chunkCounter++;
                 }
             } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
