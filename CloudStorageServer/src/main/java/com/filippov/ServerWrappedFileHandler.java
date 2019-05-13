@@ -13,7 +13,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
-import java.nio.file.attribute.FileAttribute;
 
 public class ServerWrappedFileHandler {
 
@@ -28,25 +27,119 @@ public class ServerWrappedFileHandler {
         }
     }
 
-//    public static void parseToSend(Path localPath, Path targetPath, Channel channel) {
-//        long fileSize=0;
-//        try {
-//            fileSize = Files.size(localPath);
-//        } catch (IOException e) {
-//            e.printStackTrace();
-//            System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
-//        }
-//
-//        if(fileSize<= byteBufferSize)
-//            wrapAndWriteFile(localPath, targetPath, channel);
-//        else
-//            wrapAndWriteChunk(localPath,targetPath, channel);
-//
-//    }
+    public static void parseToSend(String login, File file, Channel channel) {
+        if (Utils.isThatDirectory(login, file)) {
+            System.out.println("Работаем с директорией!");
+            return;
+        }
+        Path serverPath = Paths.get(Server.rootPath.toString(), Utils.getRecordedPath(login,file).toString());
+
+        if (!Files.exists(serverPath)) {
+            System.out.println("Запрошенный файл не найден!");
+            return;
+        }
+
+        long fileSize=0;
+
+        try {
+            fileSize = Files.size(serverPath);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
+        }
+
+        if(fileSize<= byteBufferSize)
+            wrapAndWriteFile(serverPath, Paths.get("root"), file.getName(), channel); //временная замена на root
+        else
+            wrapAndWriteChunk(serverPath, Paths.get("root"), file.getName(), channel); //временная замена на root
+
+    }
+
+    public static void wrapAndWriteFile(Path serverPath, Path targetPath, String fileName, Channel channel) {
+        System.out.printf("Файл %s будет записан в канал и размещен в папке %s ", fileName, targetPath.toString());
+        System.out.println();
+        try {
+            byte[] bytes = null;
+            bytes = Files.readAllBytes(serverPath);
+
+            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
+                    1,1,
+                    fileName, targetPath.toFile());
+
+            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                System.out.println("Writing Complete!");
+            }).sync();
+        } catch (IOException a) {
+            System.out.println("Ошибка записи");
+            a.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public static void wrapAndWriteChunk(Path serverPath, Path targetPath, String fileName, Channel channel) {
+        System.out.println("-------------------------------------------------------------");
+        System.out.println("Указанный путь к файлу: " + serverPath.toString());
+        System.out.println("Имя файла: " + fileName);
+        System.out.println("Указанный удаленный путь" + targetPath.toString());
+
+        if(Files.exists(serverPath)) {
+            long chunkCounter = 1;
+            long chunks=0;
+            try {
+                if(Files.size(serverPath)%byteBufferSize == 0){
+                    chunks = Files.size(serverPath)/byteBufferSize;
+                }
+                else {
+                    chunks = Math.round(Files.size(serverPath)/byteBufferSize)+1;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            byte[] byteBuffer = new byte[byteBufferSize];
+            int bytesRed=0;
+            File file = serverPath.toFile();
+            try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
+                while ((bytesRed=bis.read(byteBuffer))>0) {
+
+                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
+                            byteBuffer, chunkCounter, chunks,
+                            fileName, targetPath.toFile());
+
+                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                        System.out.println("Writing Complete!");
+                    }).sync();
+                    chunkCounter++;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void saveFile(WrappedFile wrappedFile) {
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+        Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
+        System.out.println("Файл будет записан по адресу: " + path.toString());
+        try {
+            if(Files.exists(path)){
+                Files.delete(path);
+            }
+//                Files.createDirectories(path.getParent());
+            Files.write(path, wrappedFile.getBytes());
+            System.out.println("Обращение к БД!.....................................");
+            Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+        } catch (IOException e) {
+            System.out.println("Не удалось записать файл!");
+            e.printStackTrace();
+        }
+    }
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка № " + wrappedFile.getChunkNumber() + " из " + wrappedFile.getChunkslsInFile());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
 //                если файла по этому адресу еще не существует
@@ -66,25 +159,12 @@ public class ServerWrappedFileHandler {
                     System.out.println("Запись обнаружена, пишется последний чанк " + wrappedFile.getChunkNumber() + " Всего чанков: " + wrappedFile.getChunkslsInFile());
                     Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
                     System.out.println("Обращение к БД!.....................................");
-                    Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getServerPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+                    Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
                     return;
                 }
                 System.out.printf("Запись обнаружена, пишется чанк %d из %d \n ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
                 //если ни то, ни другое
                 Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
-                /////////////////////////////////////////////////
-//                if(!Files.exists(path)) {
-//                    if (wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
-//                        System.out.println("Запись обнаружена, пишется последний чанк " + wrappedFile.getChunkNumber() + " Всего чанков: " + wrappedFile.getChunkslsInFile());
-//                        Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
-//                        System.out.println("Обращение к БД!.....................................");
-//                        Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getServerPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
-//                        return;
-//                    }
-//                    System.out.println("Записей не обнаружено! Создаю директории и пишу чанки!");
-//                    Files.createDirectories(path);
-//                    Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
-//                }
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
                 e.printStackTrace();
@@ -96,84 +176,6 @@ public class ServerWrappedFileHandler {
     }
 
 
-    private static void saveFile(WrappedFile wrappedFile) {
-        // конструируем путь к файлу
-//        String targetPath = wrappedFile.getServerPath().getPath();
-//        System.out.println("TargetPath: " + targetPath);
-//        System.out.println("FileName: " + wrappedFile.getFileName());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
-        Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
-        System.out.println("Файл будет записан по адресу: " + path.toString());
-        try {
-            if(Files.exists(path)){
-                Files.delete(path);
-            }
-//                Files.createDirectories(path.getParent());
-                Files.write(path, wrappedFile.getBytes());
-                System.out.println("Обращение к БД!.....................................");
-                Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getServerPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
-            } catch (IOException e) {
-                System.out.println("Не удалось записать файл!");
-                e.printStackTrace();
-            }
-    }
-
-
-    public static void wrapAndWriteFile(Path localPath, Path targetPath, Channel channel) {
-        System.out.printf("Файл %s будет записан в канал и размещен в папке %s ", localPath.getFileName().toString(), targetPath.toString());
-        System.out.println();
-        try {
-            byte[] bytes = null;
-            bytes = Files.readAllBytes(localPath);
-
-            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
-                    1,1,
-                    localPath.getFileName().toString(), targetPath.toFile());
-
-            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                System.out.println("Writing Complete!");
-            });
-        } catch (IOException a) {
-            System.out.println("Ошибка записи");
-            a.printStackTrace();
-        }
-    }
-
-
-    public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
-        System.out.println("-------------------------------------------------------------");
-        System.out.println("Указанный путь к файлу: " + localPath.toString());
-        System.out.println("Имя файла: " + localPath.getFileName().toString());
-        System.out.println("Указанный удаленный путь" + targetPath.toString());
-
-        if(Files.exists(localPath)) {
-            long chunkCounter = 1;
-            long chunks=0;
-            try {
-                chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            byte[] byteBuffer = new byte[byteBufferSize];
-            int bytesRed=0;
-            File file = localPath.toFile();
-            try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
-                while ((bytesRed=bis.read(byteBuffer))>0) {
-
-                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
-                            byteBuffer, chunkCounter, chunks,
-                            localPath.getFileName().toString(), targetPath.toFile());
-
-                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                        System.out.println("Writing Complete!");
-                    });
-                    chunkCounter++;
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
 
 
 }

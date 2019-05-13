@@ -75,7 +75,7 @@ public class Controller implements Initializable {
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
                     Path path = Paths.get(network.getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
-//                    network.getPathHolder().setServerPath(path);
+//                    network.getPathHolder().setTargetPath(path);
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
                     Network.getInstance().requestFilesListFromServer(path);
                 }
@@ -126,7 +126,7 @@ public class Controller implements Initializable {
 
     public void connect() {
         Network.setController(this);
-        Network.getInstance().startNetwork("Suka", "Blyat");
+        Network.getInstance().startNetwork("Suka", "Blyat");//заменить
     }
 
     public void disconnest() {
@@ -142,7 +142,6 @@ public class Controller implements Initializable {
         //если запрашиваемый путь к папке на сервере эквивалентен корневому - запрос не выполняется.
         if(!network.getPathHolder().getServerPath().equals(PathHolder.baseServerPath)){
             Path path = network.getPathHolder().getServerPath().getParent();
-//            network.getPathHolder().setServerPath(network.getPathHolder().getServerPath().getParent());
             network.requestFilesListFromServer(path);
         }
     }

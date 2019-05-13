@@ -19,9 +19,9 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                 }
             }
             else {
-                WrappedFile cwo = (WrappedFile) msg;
+                WrappedFile wrappedFile = (WrappedFile) msg;
                 System.out.println("Отправляю в парсер объектов!");
-                ClientWrappedFileHandler.parseToSave(cwo);
+                ClientWrappedFileHandler.parseToSave(wrappedFile);
             }
         } finally {
             ReferenceCountUtil.release(msg);

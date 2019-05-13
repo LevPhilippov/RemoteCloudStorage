@@ -18,22 +18,25 @@ public class ServerRequestHandler{
         switch (request.getRequestType()){
             case FILELIST: sendFileList(request,ctx);
                 break;
-            case GETFILES:
+            case GETFILES: {
                 System.out.println("Получен запрос на отправку файлов: " + request.getFileList());
-//                filesWork(request, ctx);
+                for (File file : request.getFileList()) {
+                    ServerWrappedFileHandler.parseToSend(request.getLogin(), file, ctx.channel());
+                }
                 break;
+            }
             case DELETEFILES: {
                 System.out.println("Удаление файлов! " + request.getFileList());
                 //проверить наличие записи в базе и наличие файла на диске, затем удалить файл, затем удалить запись в базе.
                 for (File file : request.getFileList()) {
-                    //получаем путь из БД
-                    Path dbPath = Utils.getRecordPath(request.getLogin(),file);
                     //если это папка то работаем как с папкой
                     if(Utils.isThatDirectory(request.getLogin(), file)) {
                         System.out.println("Удаляем папку!");
                         continue;
                     }
                     //если это файл - конструируем абсолютный путь к файлу и работаем с файлом
+                    //получаем путь из БД
+                    Path dbPath = Utils.getRecordedPath(request.getLogin(),file);
                     Path serverPath = Paths.get(Server.rootPath.toString(),dbPath.toString());
                     //если файл существует в БД и на сервере
                     if(Files.exists(serverPath)) {

@@ -43,19 +43,36 @@ public class ClientWrappedFileHandler{
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка");
-        Path targetPath = wrappedFile.getServerPath().toPath();
-        Path path = Paths.get(targetPath.toString() + "/" + wrappedFile.getFileName());
+        Path targetPath = wrappedFile.getTargetPath().toPath();
+        ///
+        if(targetPath.toString().equals("root")) {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getFileName());
+            System.out.println("Файл будет записан по адресу: " + targetPath);
+        }
 
-        if(!Files.exists(path)){
-            try {
-                Files.createDirectories(targetPath);
-                Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
-            } catch (IOException e) {
-                System.out.println("Не удалось записать файл!");
-                e.printStackTrace();
+        try {
+            //если такого файла не существует
+            if(!Files.exists(targetPath)){
+                Files.createDirectories(targetPath.getParent());
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                return;
+            } //если файл уже существует он будет перезаписан
+            else if (Files.exists(targetPath) && wrappedFile.getChunkNumber()==1) {
+                Files.delete(targetPath);
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                return;
             }
-        } else {
-            System.out.println("Файл уже существует");
+            //если ни то ни другое
+            Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            System.out.println("Не удалось записать файл!");
+            e.printStackTrace();
+        } finally {
+            Network.getInstance().getController().refreshLocalFilesList();
         }
     }
 
@@ -65,14 +82,20 @@ public class ClientWrappedFileHandler{
 
 
     private static void saveFile(WrappedFile wrappedFile) {
-        Path targetPath = wrappedFile.getServerPath().toPath();
-        Path path = Paths.get(targetPath.toString() + "/" + wrappedFile.getFileName());
-
-        if(!Files.exists(path)){
+        Path targetPath = wrappedFile.getTargetPath().toPath();
+        ///
+        if(targetPath.toString().equals("root")) {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getFileName());
+            System.out.println("Файл будет записан по адресу: " + targetPath);
+        }
+        ///
+        if(!Files.exists(targetPath)){
             try {
-                Files.createDirectories(targetPath);
-                Files.createFile(path);
-                Files.write(path,wrappedFile.getBytes());
+                Files.createDirectories(targetPath.getParent());
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes());
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
                 e.printStackTrace();
@@ -80,6 +103,7 @@ public class ClientWrappedFileHandler{
         } else {
             System.out.println("Файл уже существует");
         }
+        Network.getInstance().getController().refreshLocalFilesList();
     }
 
 
@@ -91,8 +115,8 @@ public class ClientWrappedFileHandler{
                     1,1,
                     localPath.getFileName().toString(),serverPath.toFile());
 //            if (serverPath!=null)
-//                wrappedFile.setServerPath(serverPath.toFile());
-            System.out.println("RelativePath у собранного файла: " + wrappedFile.getServerPath());
+//                wrappedFile.setTargetPath(serverPath.toFile());
+            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");
             });

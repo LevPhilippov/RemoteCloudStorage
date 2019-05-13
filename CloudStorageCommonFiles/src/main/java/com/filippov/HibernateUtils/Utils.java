@@ -147,7 +147,7 @@ public class Utils {
         return null;
     }
 
-    public static Path getRecordPath(String login, File path) {
+    public static Path getRecordedPath(String login, File path) {
         FilesEntity filesEntity = isRecordExist(login, path);
         return Paths.get(login, filesEntity.getPathNameHash());
     }
