@@ -1,6 +1,5 @@
 package com.filippov;
 
-import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
 
@@ -44,7 +43,7 @@ public class ClientWrappedFileHandler{
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка");
-        Path targetPath = wrappedFile.getTargetPath().toPath();
+        Path targetPath = wrappedFile.getServerPath().toPath();
         Path path = Paths.get(targetPath.toString() + "/" + wrappedFile.getFileName());
 
         if(!Files.exists(path)){
@@ -66,7 +65,7 @@ public class ClientWrappedFileHandler{
 
 
     private static void saveFile(WrappedFile wrappedFile) {
-        Path targetPath = wrappedFile.getTargetPath().toPath();
+        Path targetPath = wrappedFile.getServerPath().toPath();
         Path path = Paths.get(targetPath.toString() + "/" + wrappedFile.getFileName());
 
         if(!Files.exists(path)){
@@ -84,18 +83,16 @@ public class ClientWrappedFileHandler{
     }
 
 
-    public static void wrapAndWriteFile(Path localPath, Path targetPath, Channel channel) {
-        System.out.printf("Файл %s будет записан в канал и размещен в папке %s ", localPath.getFileName().toString(), targetPath.toString());
-        System.out.println();
+    public static void wrapAndWriteFile(Path localPath, Path serverPath, Channel channel) {
+        System.out.printf("Файл %s будет записан в канал и размещен в папке %s\n ", localPath.getFileName(), serverPath);
         try {
-            byte[] bytes = null;
-            bytes = Files.readAllBytes(localPath);
-
+            byte[] bytes = Files.readAllBytes(localPath);
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
-                    localPath.getFileName().toString(), targetPath.toFile());
-            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
-
+                    localPath.getFileName().toString(),serverPath.toFile());
+//            if (serverPath!=null)
+//                wrappedFile.setServerPath(serverPath.toFile());
+            System.out.println("RelativePath у собранного файла: " + wrappedFile.getServerPath());
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");
             });
@@ -108,9 +105,9 @@ public class ClientWrappedFileHandler{
 
     public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
         System.out.println("-------------------------------------------------------------");
-        System.out.println("Указанный путь к файлу: " + localPath.toString());
-        System.out.println("Имя файла: " + localPath.getFileName().toString());
-        System.out.println("Указанный удаленный путь" + targetPath.toString());
+        System.out.println("Указанный путь к файлу: " + localPath);
+        System.out.println("Имя файла: " + localPath.getFileName());
+        System.out.println("Указанный удаленный путь" + targetPath);
 
         if(Files.exists(localPath)) {
             long chunkCounter = 1;

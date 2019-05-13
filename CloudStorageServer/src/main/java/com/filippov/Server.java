@@ -27,9 +27,7 @@ public class Server {
                     .childHandler(new ServerChannelInitializer())
                     .childOption(ChannelOption.SO_KEEPALIVE,true);
 
-            channelFuture = bootstrap.bind("127.0.0.1", 8189);
-
-            channelFuture.addListener(new ChannelFutureListener() {
+            channelFuture = bootstrap.bind("127.0.0.1", 8189).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture channelFuture) throws Exception {
                     System.out.println("Сервер запущен на порту " + channelFuture.channel().localAddress().toString());

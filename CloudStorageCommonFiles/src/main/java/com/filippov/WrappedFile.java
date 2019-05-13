@@ -15,7 +15,7 @@ public class WrappedFile implements Serializable {
     private long chunkslsInFile;
     private String fileName;
     private File localPath;
-    private File targetPath;
+    private File serverPath;
     //Не передавать login по каналу! Использовать только на сервере! Дописывать в AuthHandlere-e.
     private String login;
 
@@ -29,8 +29,7 @@ public class WrappedFile implements Serializable {
         this.chunkNumber = chunkNumber;
         this.chunkslsInFile = chunkslsInFile;
         this.fileName = fileName;
-//        this.baseLocalPath = baseLocalPath;
-        this.targetPath = targetPath;
+        this.serverPath = targetPath;
     }
 
     public WrappedFile setTypeEnum(TypeEnum typeEnum){
@@ -49,8 +48,8 @@ public class WrappedFile implements Serializable {
         this.localPath = localPath;
         return this;
     }
-    public WrappedFile setTargetPath(File targetPath){
-        this.targetPath = targetPath;
+    public WrappedFile setServerPath(File serverPath){
+        this.serverPath = serverPath;
         return this;
     }
     public WrappedFile setChunkNumber(long chunkNumber){

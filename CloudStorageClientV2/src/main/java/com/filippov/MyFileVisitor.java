@@ -9,7 +9,7 @@ public class MyFileVisitor implements FileVisitor<Path> {
     io.netty.channel.Channel channel;
     Request.RequestType requestType;
     Path startPath = null;
-    Path relativePath=null;
+    Path relativePath=Network.getInstance().getPathHolder().getServerPath();
 
     /**
      *Конструктор принимает на вход:
@@ -28,7 +28,7 @@ public class MyFileVisitor implements FileVisitor<Path> {
             System.out.println("STARTPATH IS: " + startPath);
         }
 
-        relativePath = startPath.relativize(dir);
+        relativePath = Paths.get (Network.getInstance().getPathHolder().getServerPath().toString(), startPath.relativize(dir).toString());
         System.out.println("-----------");
         System.out.println("Previzit: " + dir);
         System.out.println("Relativize: " + relativePath);

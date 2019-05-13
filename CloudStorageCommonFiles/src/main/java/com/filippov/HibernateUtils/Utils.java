@@ -1,10 +1,16 @@
 package com.filippov.HibernateUtils;
 
 import com.filippov.AuthData;
+import com.filippov.Request;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
+import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -79,28 +85,53 @@ public class Utils {
         session.close();
     }
 
-    public static List<File> fileList (String login, String path) {
+    private static List<FilesEntity> filesEntityList (String login, File path) {
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
-        System.out.println("Сессия открыта? : "+session.isOpen());
-        ///
         AuthDataEntity authDataEntity = getLoginID(session, login);
-        System.out.println(authDataEntity.getLogin());
-        Query query;
-
-        if (path == null) {
-            query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path IS NULL");
-        } else {
-            query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
-            query.setParameter("paramName2", path);
-        }
-
+        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
+        System.out.println(path.getPath());
+        query.setParameter("paramName2", path.getPath());
         query.setParameter("paramName1", authDataEntity);
         List list = query.list();
-        ///
+//
+//        if(list.isEmpty()) {
+//            isThatDirectory(session, authDataEntity, path);
+//            session.close();
+//            return null;
+//        }
         session.close();
-        System.out.println(list);
+        return list;
+    }
 
-        return FilesEntityToFile(list);
+    public static List<File> fileList (String login, File path) {
+        List <FilesEntity> filesList = filesEntityList(login, path);
+//        if(filesList==null) {
+//            System.out.println("Запрошенный адрес является файлом!");
+//            return null;
+//        }
+        return FilesEntityToFile(filesList);
+    }
+
+//    private static boolean isThatDirectory(Session session, AuthDataEntity authDataEntity, File path) {
+//        //переделать под хэшнамепас
+//        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 " +
+//                                            "AND path =:paramName2 " +
+//                                            "AND file_name =:paramName3 " +
+//                                            "AND children IS NULL");
+//        query.setParameter("paramName3", path.getName());
+//        query.setParameter("paramName2", path.getParent());
+//        query.setParameter("paramName1", authDataEntity);
+//        List list = query.list();
+//        return list.isEmpty();
+//    }
+
+    public static boolean isThatDirectory(String login, File file) {
+        //если запрошен корень - просто возвращаем true
+        if(file.getName().equals("root")) {
+            return true;
+        }
+        FilesEntity filesEntity = isRecordExist(login, file);
+        return filesEntity.getChildren()!=null;
     }
 
     private static List<File> FilesEntityToFile(List<FilesEntity> list) {
@@ -118,6 +149,47 @@ public class Utils {
         query.setParameter("paramName1", authDataEntity);
         query.setParameter("paramName2", pathNameHash);
         return !query.list().isEmpty();
+    }
 
+    private static FilesEntity isRecordExist(String login, File path) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session, login);
+        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path_name_hash =:paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        System.out.println(path);
+        query.setParameter("paramName2", DigestUtils.md5Hex(path.getParent()+ path.getName()));
+        List <FilesEntity> list = query.list();
+        if (list.size()==1) {
+            return list.get(0);
+        }
+        return null;
+    }
+
+    public static Path getRecordPath(String login, File path) {
+        FilesEntity filesEntity = isRecordExist(login, path);
+        return Paths.get(login, filesEntity.getPathNameHash());
+    }
+
+
+
+//    public static Path getServerPath() {
+//
+//    }
+
+    public static boolean deleteFileRecord(String login, File file) {
+        System.out.println("Удаление из БД!");
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session,login);
+        System.out.println("Login is: " + authDataEntity.getLogin());
+        Transaction tx = session.beginTransaction();
+                    //УДАЛИТЬ ИЗ ПАПКИ!
+        System.out.println("Удаляю файл: " + file);
+        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND pathNameHash =: paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        query.setParameter("paramName2", DigestUtils.md5Hex(file.getParent() + file.getName()));
+        System.out.println("Операция выполнено: " + query.executeUpdate());
+        tx.commit();
+        session.close();
+        return true;
     }
 }

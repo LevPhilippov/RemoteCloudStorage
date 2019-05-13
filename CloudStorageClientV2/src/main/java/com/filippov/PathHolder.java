@@ -8,6 +8,7 @@ import java.util.HashMap;
 public class PathHolder {
 
     public static final Path baseLocalPath = Paths.get("", "ClientStorage");
+    public static final Path baseServerPath = Paths.get("root");
     private Path clientPath;
     private Path serverPath;
     private final HashMap <String, Path> clientPathMap = new HashMap<>();
@@ -15,7 +16,7 @@ public class PathHolder {
 
     public PathHolder() {
         this.clientPath = Paths.get("");
-        this.serverPath = Paths.get("");
+        this.serverPath = baseServerPath;
         System.out.println("Определение корневого пути: " + baseLocalPath.toAbsolutePath());
     }
 
@@ -24,6 +25,8 @@ public class PathHolder {
     }
 
     public void setClientPath(Path clientPath) {
+//        if(clientPath==null)
+//            this.clientPath = Paths.get("");
         this.clientPath = clientPath;
     }
 
@@ -32,6 +35,8 @@ public class PathHolder {
     }
 
     public void setServerPath(Path serverPath) {
+        if(serverPath==null)
+            this.serverPath = Paths.get("root");
         this.serverPath = serverPath;
     }
 

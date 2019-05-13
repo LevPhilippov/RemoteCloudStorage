@@ -46,7 +46,7 @@ public class ServerWrappedFileHandler {
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка");
         // конструируем путь к файлу
-        String targetPath = wrappedFile.getTargetPath().getPath();
+        String targetPath = wrappedFile.getServerPath().getPath();
         String hash_file_name = DigestUtils.md5Hex(targetPath + wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
 
@@ -71,7 +71,7 @@ public class ServerWrappedFileHandler {
 
     private static void saveFile(WrappedFile wrappedFile) {
         // конструируем путь к файлу
-        String targetPath = wrappedFile.getTargetPath().getPath();
+        String targetPath = wrappedFile.getServerPath().getPath();
         System.out.println("TargetPath: " + targetPath);
         System.out.println("FileName: " + wrappedFile.getFileName());
         String hash_file_name = DigestUtils.md5Hex(targetPath + wrappedFile.getFileName());

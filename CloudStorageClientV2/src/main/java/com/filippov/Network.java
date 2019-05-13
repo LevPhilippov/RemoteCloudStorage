@@ -123,7 +123,7 @@ public class Network{
                     }
                 }
             }));
-        requestFilesListFromServer();
+        requestFilesListFromServer(getPathHolder().getServerPath());
     }
 
     /**
@@ -131,8 +131,12 @@ public class Network{
      *
      * */
 
-    public void requestFilesListFromServer() {
-        Request request = new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(pathHolder.getServerPath().toFile());
+    public void requestFilesListFromServer(Path path) {
+        Request request = new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(Paths.get("root").toFile());
+        if (path!=null) {
+            request.setServerPath(path.toFile());
+        }
+        System.out.println("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
         cf.channel().writeAndFlush(request);
     }
 

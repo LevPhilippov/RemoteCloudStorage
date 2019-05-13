@@ -74,10 +74,10 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    Path path = Paths.get(network.getPathHolder().getServerPath().toString(), (String)serverListView.getSelectionModel().getSelectedItem());
-                    network.getPathHolder().setServerPath(path);
+                    Path path = Paths.get(network.getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
+//                    network.getPathHolder().setServerPath(path);
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
-                    Network.getInstance().requestFilesListFromServer();
+                    Network.getInstance().requestFilesListFromServer(path);
                 }
             }
         });
@@ -99,16 +99,17 @@ public class Controller implements Initializable {
     }
 
 
-    public void refreshServerFileList(List<File> serverFileList) {
+    public void refreshServerFileList(List<File> serverFileList, Path serverPath) {
         Runnable refresh = () -> {
             //обновление листа для сервера
             serverListView.getItems().clear();
             network.getPathHolder().getServerPathMap().clear();
+            network.getPathHolder().setServerPath(serverPath);
             serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
                 System.out.println("Добавление в мапу /////////");
                 System.out.println("Имя файла: " + path.getFileName());
                 System.out.println("Путь:" + path.getParent());
-                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path.getParent());
+                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path);
             });
             System.out.println("Набор ключей: " + network.getPathHolder().getServerPathMap().keySet());
             serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
@@ -138,13 +139,21 @@ public class Controller implements Initializable {
     }
 
     public void stepBackServerPath(){
-        network.getPathHolder().setServerPath(network.getPathHolder().getServerPath().getParent());
-        network.requestFilesListFromServer();
+        //если запрашиваемый путь к папке на сервере эквивалентен корневому - запрос не выполняется.
+        if(!network.getPathHolder().getServerPath().equals(PathHolder.baseServerPath)){
+            Path path = network.getPathHolder().getServerPath().getParent();
+//            network.getPathHolder().setServerPath(network.getPathHolder().getServerPath().getParent());
+            network.requestFilesListFromServer(path);
+        }
     }
 
     public void stepBackClientPath(){
         Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString()).getParent();
+        if (network.getPathHolder().getClientPath().compareTo(PathHolder.baseLocalPath) < 0) {
+            return;
+        }
         network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
+        System.out.println("Путь к папке клиента: " + network.getPathHolder().getClientPath());
         refreshLocalFilesList();
     }
 
@@ -169,7 +178,7 @@ public class Controller implements Initializable {
             network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
         }
         refreshLocalFilesList();
-        network.requestFilesListFromServer();
+        network.requestFilesListFromServer(network.getPathHolder().getServerPath());
     }
 
     public void closeApp() {

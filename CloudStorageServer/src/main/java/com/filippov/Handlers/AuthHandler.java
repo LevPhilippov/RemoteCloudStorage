@@ -35,10 +35,6 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
                 System.out.println("Клиент авторизован");
                 login = ((AuthData)msg).getLogin();
                 ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
-//                ctx.writeAndFlush(new Request()
-//                        .setRequestType(Request.RequestType.ANSWER)
-//                        .setAnswerType(Request.RequestType.FILELIST)
-//                        .setFileList(Utils.fileList(login, null)));
             }
             else {
                 System.out.println("Клиент не авторизован!");

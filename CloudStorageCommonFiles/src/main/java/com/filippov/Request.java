@@ -55,6 +55,7 @@ public class Request implements Serializable {
         return this;
     }
 
+    //Login дописывается отдельно в AuthHandler на сервере.
     public String getLogin() {
         return login;
     }
