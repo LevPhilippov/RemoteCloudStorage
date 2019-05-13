@@ -45,7 +45,7 @@ public class ServerWrappedFileHandler {
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка № " + wrappedFile.getChunkNumber() + " из " + wrappedFile.getChunkslsInFile());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName())+".cloud";
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
                 //если файла по этому адресу еще не существует
@@ -88,7 +88,7 @@ public class ServerWrappedFileHandler {
 //        String targetPath = wrappedFile.getServerPath().getPath();
 //        System.out.println("TargetPath: " + targetPath);
 //        System.out.println("FileName: " + wrappedFile.getFileName());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName());
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getServerPath().getPath() + wrappedFile.getFileName()) + ".cloud";
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
         System.out.println("Файл будет записан по адресу: " + path.toString());
         try {
