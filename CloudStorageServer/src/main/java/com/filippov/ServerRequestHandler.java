@@ -21,7 +21,7 @@ public class ServerRequestHandler{
             case GETFILES: {
                 System.out.println("Получен запрос на отправку файлов: " + request.getFileList());
                 for (File file : request.getFileList()) {
-                    ServerWrappedFileHandler.parseToSend(request.getLogin(), file, ctx.channel());
+                    ServerWrappedFileHandler.parseToSend(request.getLogin(), file, ctx.channel(), null);
                 }
                 break;
             }

@@ -50,6 +50,10 @@ public class ClientWrappedFileHandler{
                     Network.getInstance().getPathHolder().getClientPath().toString(),
                     wrappedFile.getFileName());
             System.out.println("Файл будет записан по адресу: " + targetPath);
+        } else {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getTargetPath().toString());
         }
 
         try {
@@ -77,7 +81,7 @@ public class ClientWrappedFileHandler{
     }
 
     private static void showError() {
-        System.out.println("Неизвестная команда или данные повреждены");
+        System.out.println("Неизвестная команда");
     }
 
 
@@ -89,6 +93,10 @@ public class ClientWrappedFileHandler{
                     Network.getInstance().getPathHolder().getClientPath().toString(),
                     wrappedFile.getFileName());
             System.out.println("Файл будет записан по адресу: " + targetPath);
+        } else {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getTargetPath().toString());
         }
         ///
         if(!Files.exists(targetPath)){

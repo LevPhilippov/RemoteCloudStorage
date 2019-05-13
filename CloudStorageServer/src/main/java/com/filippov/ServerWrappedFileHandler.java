@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.List;
 
 public class ServerWrappedFileHandler {
 
@@ -27,32 +28,51 @@ public class ServerWrappedFileHandler {
         }
     }
 
-    public static void parseToSend(String login, File file, Channel channel) {
+    public static void parseToSend(String login, File file, Channel channel, Path startPath) {
+        // базовый путь
+        Path relativePath;
+        // если запрашиваемый файл это папка - запускаем рекурсию пока не доберемся до файлов
         if (Utils.isThatDirectory(login, file)) {
+            if (startPath == null) {
+                startPath = file.toPath().getParent(); // это можно получить и из БД
+                System.out.println("Startpath установлен как: " + startPath);
+            }
             System.out.println("Работаем с директорией!");
+            List <File> files = Utils.fileList(login, file);
+            System.out.println("Список файлов в директории " + file + ": " + files );
+            for (File f : files) {
+                parseToSend(login, f, channel, startPath);
+            }
             return;
         }
-        Path serverPath = Paths.get(Server.rootPath.toString(), Utils.getRecordedPath(login,file).toString());
+        // далее блок работы с файлами
+        //если в запросе были папки  - конструируем путь чтобы сохранить файловую структуру сервера у клиента.
+            if (startPath != null) {
+                relativePath = startPath.relativize(file.toPath());
+                System.out.println("RelativePath установлен как: " + relativePath);
+            } else {
+                 relativePath = Paths.get("root");
+            }
+        //определяем реальный путь к файлу в хранилище сервера
+            Path serverPath = Paths.get(Server.rootPath.toString(), Utils.getRecordedPath(login, file).toString());
 
-        if (!Files.exists(serverPath)) {
-            System.out.println("Запрошенный файл не найден!");
-            return;
-        }
+            if (!Files.exists(serverPath)) {
+                System.out.println("Запрошенный файл не найден!");
+                return;
+            }
 
-        long fileSize=0;
+            long fileSize = 0;
+            try {
+                fileSize = Files.size(serverPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
+            }
 
-        try {
-            fileSize = Files.size(serverPath);
-        } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
-        }
-
-        if(fileSize<= byteBufferSize)
-            wrapAndWriteFile(serverPath, Paths.get("root"), file.getName(), channel); //временная замена на root
-        else
-            wrapAndWriteChunk(serverPath, Paths.get("root"), file.getName(), channel); //временная замена на root
-
+            if (fileSize <= byteBufferSize)
+                wrapAndWriteFile(serverPath, relativePath, file.getName(), channel);
+            else
+                wrapAndWriteChunk(serverPath, relativePath, file.getName(), channel);
     }
 
     public static void wrapAndWriteFile(Path serverPath, Path targetPath, String fileName, Channel channel) {
@@ -68,12 +88,10 @@ public class ServerWrappedFileHandler {
 
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");
-            }).sync();
+            });
         } catch (IOException a) {
             System.out.println("Ошибка записи");
             a.printStackTrace();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
         }
     }
 
