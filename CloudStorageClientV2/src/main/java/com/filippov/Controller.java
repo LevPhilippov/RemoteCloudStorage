@@ -54,6 +54,9 @@ public class Controller implements Initializable {
         localListView.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
+                if(event.getClickCount()==1) {
+                    serverListView.getSelectionModel().clearSelection();
+                }
                 if(event.getClickCount()==2) {
                     Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
                     System.out.println(path.toString());
@@ -73,6 +76,9 @@ public class Controller implements Initializable {
         serverListView.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
+                if(event.getClickCount()==1) {
+                    localListView.getSelectionModel().clearSelection();
+                }
                 if(event.getClickCount()==2) {
                     Path path = Paths.get(network.getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
 //                    network.getPathHolder().setTargetPath(path);
@@ -166,22 +172,19 @@ public class Controller implements Initializable {
     }
 
     public void delete() {
-        if (false){
             ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
             if(!observableList.isEmpty()) {
                 System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
                 network.filesHandler(observableList, Request.RequestType.DELETEFILES);
+                refreshLocalFilesList();
             }
-            refreshLocalFilesList();
-        }
-        else if (false){
-            ObservableList observableList = serverListView.getSelectionModel().getSelectedItems();
+
+            observableList = serverListView.getSelectionModel().getSelectedItems();
             if (!observableList.isEmpty()) {
                 System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
                 network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
+                network.requestFilesListFromServer(network.getPathHolder().getServerPath());
             }
-            network.requestFilesListFromServer(network.getPathHolder().getServerPath());
-        }
     }
 
     public void closeApp() {
