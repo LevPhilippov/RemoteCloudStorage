@@ -26,30 +26,7 @@ public class ServerRequestHandler{
                 break;
             }
             case DELETEFILES: {
-                System.out.println("Удаление файлов! " + request.getFileList());
-                //проверить наличие записи в базе и наличие файла на диске, затем удалить файл, затем удалить запись в базе.
-                for (File file : request.getFileList()) {
-                    //если это папка то работаем как с папкой
-                    if(Utils.isThatDirectory(request.getLogin(), file)) {
-                        System.out.println("Удаляем папку!");
-                        continue;
-                    }
-                    //если это файл - конструируем абсолютный путь к файлу и работаем с файлом
-                    //получаем путь из БД
-                    Path dbPath = Utils.getRecordedPath(request.getLogin(),file);
-                    Path serverPath = Paths.get(Server.rootPath.toString(),dbPath.toString());
-                    //если файл существует в БД и на сервере
-                    if(Files.exists(serverPath)) {
-                        try {
-                            //удаляем запись на диске сервера
-                            Files.delete(serverPath);
-                            //удаляем запись в БД
-                            Utils.deleteFileRecord(request.getLogin(), file);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
+                deleteFiles(request.getLogin(), request.getFileList());
                 break;
             }
             case CREATE_FOLDER: {
@@ -65,6 +42,40 @@ public class ServerRequestHandler{
             default:
                 System.out.println("Неизвестный тип Request");
                 break;
+        }
+    }
+
+    private static void deleteFiles(String login, List<File> fileList) {
+        System.out.println("Удаление файлов! " + fileList);
+        //проверить наличие записи в базе и наличие файла на диске, затем удалить файл, затем удалить запись в базе.
+        for (File file : fileList) {
+            //если это папка то работаем как с папкой
+            if(Utils.isThatDirectory(login, file)) {
+                System.out.println("Удаляем папку c содержимым!");
+                //тут нужен рекурсивный метод
+                List <File> fileList1 = Utils.fileList(login, file);
+                System.out.println("Удаляем следующие файлы : " + fileList1);
+                deleteFiles(login, fileList1);
+//                System.out.println("Удалено обьектов " + Utils.deleteFolders(login, file));
+                // работает не совсем корректно - не хватило времени дописать!
+                Utils.deleteFileRecord(login, file);
+                continue;
+            }
+            //если это файл - конструируем абсолютный путь к файлу и работаем с файлом
+            //получаем путь из БД
+            Path dbPath = Utils.getRecordedPath(login,file);
+            Path serverPath = Paths.get(Server.rootPath.toString(),dbPath.toString());
+            //если файл существует в БД и на сервере
+            if(Files.exists(serverPath)) {
+                try {
+                    //удаляем запись на диске сервера
+                    Files.delete(serverPath);
+                    //удаляем запись в БД
+                    Utils.deleteFileRecord(login, file);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 

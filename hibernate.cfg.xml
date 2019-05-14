@@ -15,7 +15,6 @@
     <property name="connection.username">root</property>
     <property name="connection.password">12345</property>
     <!-- NOTE that after automapping with IDEA property username and password will delete -->
-    <mapping class="com.filippov.AuthData"/>
     <!-- DB schema will be updated if needed -->
     <!-- <property name="hbm2ddl.auto">update</property> -->
 

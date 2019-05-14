@@ -1,87 +1,262 @@
-Серверная часть (CloudStorageServer)
-package com.filippov;
+Релизовано на клиенте:
+Отправка, получение файлов чанками и отдельными файлами, авторизация, удаление файлов и каталогов.
+Присутствует шифрование логина и пароля в MD5. Подключен SSL-handler.
+Реализвано на сервере:
+Хранение файловой структуры пользователя осуществляется в БД. Дл общения с БД используется Hibernate.
+Реализована отправка и получение файлов, чанк-передача с сохранением файловой структуры.
+Удаление единичных файлов - удаление каталогов не успел дописать.
+В планах: закончить основной функционал, оптимизировать код, доработать интерфейс - сейчас он до нельзя топорный.
 
 
-public class MainServer {
-    public static void main(String[] args) {
-        new Server().run();
-    }
-}
+Код клиента:
 
+public class ClientMain extends Application {
 
-public class Server {
-    ChannelFuture channelFuture;
+    private static Parent root;
+    private static Parent log;
+    private static Stage primaryStage;
+    public  static ClientMain clientMain;
 
-    public void run() {
-        EventLoopGroup bossGroup = new NioEventLoopGroup();
-        EventLoopGroup workerGroup = new NioEventLoopGroup();
-        try {
-            ServerBootstrap bootstrap = new ServerBootstrap();
-            bootstrap.group(bossGroup,workerGroup).channel(NioServerSocketChannel.class).childHandler(new ChannelInitializer<SocketChannel>() {
-
-            @Override
-            protected void initChannel(SocketChannel socketChannel) throws Exception {
-                socketChannel.pipeline().addLast(
-                        new LoggingHandler("serverLog", LogLevel.INFO),
-                        new ObjectEncoder(),
-                        new ObjectDecoder(1024*1024*10,ClassResolvers.cacheDisabled(null)),
-                        new ObjectInboundHandler());
-            }
-            }).childOption(ChannelOption.SO_KEEPALIVE,true);
-
-            channelFuture = bootstrap.bind("127.0.0.1", 8189);
-
-            channelFuture.addListener(new ChannelFutureListener() {
-                @Override
-                public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                    System.out.println("Сервер запущен на порту " + channelFuture.channel().localAddress().toString());
-                }
-            }).sync();
-
-            channelFuture.channel().closeFuture().sync();
-
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-            workerGroup.shutdownGracefully();
-            bossGroup.shutdownGracefully();
-        }
-    }
-}
-
-public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
     @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        try {
-            if (msg instanceof Request) {
-                Request request = (Request) msg;
-                if(request.getRequestType().equals(Request.RequestType.ANSWER)) {
-                    System.out.println("Получен ответ!");
-                    ctx.fireChannelRead(request);
-                    return;
-                }
+    public void start(Stage primaryStage) throws Exception{
+        clientMain=this;
+        this.primaryStage = primaryStage;
+//        root = FXMLLoader.load(getClass().getResource("/log.fxml"));
+//        primaryStage.setTitle("Cloud");
+//        primaryStage.setScene(new Scene(root, 300, 200));
+//        primaryStage.setResizable(false);
+//        primaryStage.show();
+        setMainScene();
+    }
 
-                System.out.println("Получен запрос! Отправляю в парсер запросов!");
-                RequestHandler.parse((Request)msg, ctx);
+    public void setMainScene(){
+        Runnable runnable = () -> {
+            try {
+                root = FXMLLoader.load(getClass().getResource("/sample.fxml"));
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-            else {
-                CloudWrappedObject cwo = (CloudWrappedObject) msg;
-                System.out.println(cwo.getMsg());
-                System.out.println("Отправляю в парсер объектов!");
-                CWOHandler.parse(cwo);
-            }
-        } finally {
-            ReferenceCountUtil.release(msg);
+            primaryStage.setTitle("Cloud");
+            primaryStage.setScene(new Scene(root, 800, 600));
+            primaryStage.show();
+        };
+        refreshPattern(runnable);
+    }
+
+    private static void refreshPattern(Runnable runnable) {
+        if (Platform.isFxApplicationThread()) {
+            runnable.run();
+        } else {
+            Platform.runLater(runnable);
         }
+    }
+
+
+
+    public static void main(String[] args) {
+        launch(args);
     }
 }
 
-Клиентская часть (CloudStorageClient):
-
 package com.filippov;
 
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+
+public class ClientWrappedFileHandler{
+
+    public static int byteBufferSize = 1024*1024*5;
+
+
+    public static void parseToSave(WrappedFile wrappedFile) {
+        switch (wrappedFile.getTypeEnum()) {
+            case FILE: saveFile(wrappedFile); break;
+            case CHUNKED: saveChunk(wrappedFile); break;
+            default: showError(); break;
+        }
+    }
+
+    public static void parseToSend(Path localPath, Path targetPath, Channel channel) {
+        long fileSize=0;
+        try {
+            fileSize = Files.size(localPath);
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
+        }
+
+        if(fileSize<= byteBufferSize)
+            wrapAndWriteFile(localPath, targetPath, channel);
+        else
+            wrapAndWriteChunk(localPath,targetPath, channel);
+
+    }
+
+    private static void saveChunk(WrappedFile wrappedFile) {
+        System.out.println("Запись чанка");
+        Path targetPath = getlocalPath(wrappedFile);
+
+        try {
+            //если такого файла не существует
+            if(!Files.exists(targetPath)){
+                Files.createDirectories(targetPath.getParent());
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                return;
+            } //если файл уже существует он будет перезаписан
+            else if (Files.exists(targetPath) && wrappedFile.getChunkNumber()==1) {
+                Files.delete(targetPath);
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                return;
+            }
+            //если ни то ни другое
+            Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            System.out.println("Не удалось записать файл!");
+            e.printStackTrace();
+        } finally {
+            Network.getInstance().getController().refreshLocalFilesList();
+        }
+    }
+
+    private static void showError() {
+        System.out.println("Неизвестная команда");
+    }
+
+
+    private static void saveFile(WrappedFile wrappedFile) {
+        Path targetPath = getlocalPath(wrappedFile);
+        ///
+        if(!Files.exists(targetPath)){
+            try {
+                Files.createDirectories(targetPath.getParent());
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes());
+            } catch (IOException e) {
+                System.out.println("Не удалось записать файл!");
+                e.printStackTrace();
+            }
+        } else {
+            System.out.println("Файл уже существует");
+        }
+        Network.getInstance().getController().refreshLocalFilesList();
+    }
+
+    private static Path getlocalPath(WrappedFile wrappedFile) {
+        Path targetPath = wrappedFile.getTargetPath().toPath();
+        ///
+        if (targetPath.toString().equals("root")) {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getFileName());
+            System.out.println("Файл будет записан по адресу: " + targetPath);
+        } else {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getTargetPath().toString());
+        }
+        return targetPath;
+    }
+
+
+    public static void wrapAndWriteFile(Path localPath, Path serverPath, Channel channel) {
+        System.out.printf("Файл %s будет записан в канал и размещен в папке %s\n ", localPath.getFileName(), serverPath);
+        try {
+            byte[] bytes = Files.readAllBytes(localPath);
+            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
+                    1,1,
+                    localPath.getFileName().toString(),serverPath.toFile());
+//            if (serverPath!=null)
+//                wrappedFile.setTargetPath(serverPath.toFile());
+            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
+            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                System.out.println("Writing Complete!");
+            });
+        } catch (IOException a) {
+            System.out.println("Ошибка записи");
+            a.printStackTrace();
+        }
+    }
+
+
+    public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
+        System.out.println("-------------------------------------------------------------");
+        System.out.println("Указанный путь к файлу: " + localPath);
+        System.out.println("Имя файла: " + localPath.getFileName());
+        System.out.println("Указанный удаленный путь" + targetPath);
+
+        if(Files.exists(localPath)) {
+            long chunkCounter = 1;
+            long chunks=0;
+            try {
+                if(Files.size(localPath)%byteBufferSize == 0){
+                    chunks = Files.size(localPath)/byteBufferSize;
+                }
+                else {
+                    chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            byte[] byteBuffer = new byte[byteBufferSize];
+            int bytesRed=0;
+            File file = localPath.toFile();
+            try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
+                while ((bytesRed=bis.read(byteBuffer))>0) {
+
+                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
+                            byteBuffer, chunkCounter, chunks,
+                            localPath.getFileName().toString(), targetPath.toFile());
+
+                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                        System.out.println("Writing Complete!");
+                    }).sync();
+                    System.out.printf("Записан чанк %d из %d\n", chunkCounter, chunks);
+                    chunkCounter++;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+
+}
+package com.filippov;
+
+import javafx.application.Platform;
+import javafx.collections.ObservableList;
+import javafx.event.EventHandler;
+import javafx.fxml.FXML;
+import javafx.fxml.Initializable;
+import javafx.scene.control.*;
+import javafx.scene.input.MouseEvent;
+import lombok.Getter;
+
+import java.io.File;
+import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.ResourceBundle;
 
 @Getter
 public class Controller implements Initializable {
+
+    Network network;
 
     @FXML
     private ListView serverListView;
@@ -97,17 +272,18 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        try {
-            Class.forName("com.filippov.Network");
-        } catch (ClassNotFoundException e) {
-            e.printStackTrace();
-        }
+        //network binding
+        network = Network.getInstance();
+        network.setController(this);
+        //listview setting
         localListView.setManaged(true);
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());
         setListenersOnListView();
+        //refresh lists
+        refreshLocalFilesList();
+//        network.requestFilesListFromServer();
     }
 
     private void setListenersOnListView() {
@@ -115,11 +291,14 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    PathHolder pathHolder = Network.getInstance().getPathHolder();
-                    String path = pathHolder.getClientPath() + '/' + (String)localListView.getSelectionModel().getSelectedItem();
-                    if(Files.isDirectory(Paths.get(path))) {
-                        System.out.println("Новый путь к директории клиента: " + path);
-                        refreshLocalFileList(path);
+                    Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
+                    System.out.println(path.toString());
+                    if(Files.isDirectory(path)) {
+                        System.out.println("-----------------------------");
+                        System.out.println("Новый путь к директории клиента: " + path.toString());
+                        System.out.println("-----------------------------");
+                        network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
+                        refreshLocalFilesList();
                         return;
                     }
                     System.out.println("Выбранный файл не является директорией!");
@@ -131,100 +310,199 @@ public class Controller implements Initializable {
             @Override
             public void handle(MouseEvent event) {
                 if(event.getClickCount()==2) {
-                    PathHolder pathHolder = Network.getInstance().getPathHolder();
-                    String path = pathHolder.getServerPath() + '/' + (String)serverListView.getSelectionModel().getSelectedItem();
-                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path);
-                    Network.getInstance().requestFilesList(path);
+                    Path path = Paths.get(network.getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
+//                    network.getPathHolder().setTargetPath(path);
+                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
+                    Network.getInstance().requestFilesListFromServer(path);
                 }
             }
         });
     }
 
-    public void refreshLocalFileList(String path) {
-        if (Platform.isFxApplicationThread()) {
-            Network.getInstance().getPathHolder().setClientPath(path);
+
+    public void refreshLocalFilesList(){
+        Runnable refresh = () -> {
+            //обновление листа для клиента
+            network.getPathHolder().getClientPathMap().clear();
             localListView.getItems().clear();
-            Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
-        } else {
-            Platform.runLater(() -> {
-                Network.getInstance().getPathHolder().setClientPath(path);
-                localListView.getItems().clear();
-                Factory.giveFileList(path).stream().forEach(localListView.getItems()::add);
+            Factory.giveFileList(Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString())).forEach((path)->{
+                network.getPathHolder().getClientPathMap().put(path.getFileName().toString(),path);
             });
-        }
-        clientFolder.setText(Network.getInstance().getPathHolder().getClientPath());
+            localListView.getItems().setAll(network.getPathHolder().getClientPathMap().keySet());
+            clientFolder.setText(network.getPathHolder().getClientPath().toString());
+        };
+        refreshPattern(refresh);
+    }
+
+
+    public void refreshServerFileList(List<File> serverFileList, Path serverPath) {
+        Runnable refresh = () -> {
+            //обновление листа для сервера
+            serverListView.getItems().clear();
+            network.getPathHolder().getServerPathMap().clear();
+            network.getPathHolder().setServerPath(serverPath);
+            serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
+                System.out.println("Добавление в мапу /////////");
+                System.out.println("Имя файла: " + path.getFileName());
+                System.out.println("Путь:" + path.getParent());
+                network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path);
+            });
+            System.out.println("Набор ключей: " + network.getPathHolder().getServerPathMap().keySet());
+            serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
+            if (network.getPathHolder().getServerPath()!=null)
+                serverFolder.setText(network.getPathHolder().getServerPath().toString());
+        };
+        refreshPattern(refresh);
     }
 
     public void push() {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().sendFileToCloud(os);
+        network.filesHandler(os, Request.RequestType.SENDFILES);
     }
 
     public void connect() {
         Network.setController(this);
-        Network.getInstance().startNetwork();
+        Network.getInstance().startNetwork("login", "Password");//заменить
     }
 
     public void disconnest() {
         Platform.runLater(() -> Network.getInstance().shutdown());
-        Platform.exit();
-    }
-
-    public void refreshServerFileList(List<String> serverFileList) {
-        if (Platform.isFxApplicationThread()) {
-                serverListView.getItems().clear();
-                serverFileList.stream().forEach(serverListView.getItems()::add);
-                serverFolder.setText(Network.getInstance().getPathHolder().getServerPath());
-
-        } else {
-            Platform.runLater(() -> {
-                    serverListView.getItems().clear();
-                    serverFileList.stream().forEach(serverListView.getItems()::add);
-                    serverFolder.setText(Network.getInstance().getPathHolder().getServerPath());
-            });
-        }
-
     }
 
     public void requestFile() {
         ObservableList<String> os = serverListView.getSelectionModel().getSelectedItems();
-        Network.getInstance().requestFile(os);
+        network.sendFilesRequest(os, Request.RequestType.GETFILES);
     }
 
     public void stepBackServerPath(){
-        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getServerPath());
-        Network.getInstance().requestFilesList(newPath);
+        //если запрашиваемый путь к папке на сервере эквивалентен корневому - запрос не выполняется.
+        if(!network.getPathHolder().getServerPath().equals(PathHolder.baseServerPath)){
+            Path path = network.getPathHolder().getServerPath().getParent();
+            network.requestFilesListFromServer(path);
+        }
     }
 
     public void stepBackClientPath(){
-        String newPath = Factory.giveStepBackPath(Network.getInstance().getPathHolder().getClientPath());
-        refreshLocalFileList(newPath);
+        Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString()).getParent();
+        if (network.getPathHolder().getClientPath().compareTo(PathHolder.baseLocalPath) < 0) {
+            return;
+        }
+        network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
+        System.out.println("Путь к папке клиента: " + network.getPathHolder().getClientPath());
+        refreshLocalFilesList();
+    }
+
+
+    private static void refreshPattern(Runnable refresh) {
+        if (Platform.isFxApplicationThread()) {
+            refresh.run();
+        } else {
+            Platform.runLater(refresh);
+        }
+    }
+
+    public void delete() {
+        ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
+        if(!observableList.isEmpty()) {
+            System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
+            network.filesHandler(observableList, Request.RequestType.DELETEFILES);
+        }
+        observableList = serverListView.getSelectionModel().getSelectedItems();
+        if (!observableList.isEmpty()) {
+            System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
+            network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
+        }
+        refreshLocalFilesList();
+        network.requestFilesListFromServer(network.getPathHolder().getServerPath());
+    }
+
+    public void closeApp() {
+        Platform.runLater(() -> Network.getInstance().shutdown());
+        Platform.exit();
+    }
+}
+package com.filippov;
+
+import java.io.IOException;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+
+public class MyFileVisitor implements FileVisitor<Path> {
+
+    io.netty.channel.Channel channel;
+    Request.RequestType requestType;
+    Path startPath = null;
+    Path relativePath=Network.getInstance().getPathHolder().getServerPath();
+
+    /**
+     *Конструктор принимает на вход:
+     * @param requestType команда на обработку файла
+     * @param channel канал передачи данных (при необходимости)*/
+    public MyFileVisitor(io.netty.channel.Channel channel, Request.RequestType requestType) {
+        this.channel = channel;
+        this.requestType = requestType;
+    }
+
+    @Override
+    public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
+       //домашний путь вначале обхода
+        if(startPath == null) {
+            startPath = dir.getParent();
+            System.out.println("STARTPATH IS: " + startPath);
+        }
+
+        relativePath = Paths.get (Network.getInstance().getPathHolder().getServerPath().toString(), startPath.relativize(dir).toString());
+        System.out.println("-----------");
+        System.out.println("Previzit: " + dir);
+        System.out.println("Relativize: " + relativePath);
+        System.out.println("-----------");
+
+        switch (requestType){
+            case SENDFILES:{
+                System.out.println("Отправляю запрос на создание папки " + dir.getFileName() + " по адресу" + relativePath);
+                Request createFolder = new Request();
+                createFolder.setRequestType(Request.RequestType.CREATE_FOLDER).setServerPath(relativePath.toFile());
+                channel.writeAndFlush(createFolder);
+                break;
+            }
+            default: break;
+        }
+        return FileVisitResult.CONTINUE;
+    }
+
+    @Override
+    public  FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+        System.out.printf("File %s with path %s\n", file.getFileName(), relativePath);
+        switch (requestType){
+            case SENDFILES:{
+                ClientWrappedFileHandler.parseToSend(file, relativePath, channel);
+                break;
+            }
+            case DELETEFILES:{
+                Files.delete(file);
+                break;
+            }
+            default: break;
+        }
+        return FileVisitResult.CONTINUE;
+    }
+
+    @Override
+    public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
+        System.out.println("Ошибка отправки файла");
+        return null;
+    }
+
+    @Override
+    public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+        switch (requestType){
+            case DELETEFILES: Files.delete(dir); break;
+            default: break;
+        }
+        return FileVisitResult.CONTINUE;
     }
 }
 
-package com.filippov;
-
-import com.filippov.Handlers.ClientAnswerHandler;
-import com.filippov.Handlers.ObjectInboundHandler;
-import io.netty.bootstrap.Bootstrap;
-import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import javafx.collections.ObservableList;
-
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.function.Consumer;
 
 package com.filippov;
 
@@ -240,39 +518,50 @@ import io.netty.handler.codec.serialization.ObjectDecoder;
 import io.netty.handler.codec.serialization.ObjectEncoder;
 import io.netty.handler.logging.LogLevel;
 import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import javafx.collections.ObservableList;
 
+import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 public class Network{
+    public static final String HOST = "localhost";
+    public static final int PEER_PORT = 8189;
     private static Network ourInstance = new Network();
     public static Network getInstance() {return ourInstance;}
     private Network(){}
-    private static PathHolder pathHolder = new PathHolder();;
+    private static PathHolder pathHolder = new PathHolder();
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     private static Controller controller;
+    private static Thread networkThread;
 
-    public void startNetwork() {
+
+    public void startNetwork(String login, String password) {
         bossGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap();
-        Thread networkThread = new Thread(new Runnable() {
+        networkThread = new Thread(new Runnable() {
             @Override
-            public void run() {
+            public void run(){
                 try {
+                    // Configure SSL.
+                    final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
+                    //SSL
+
                     bootstrap.group(bossGroup).channel(NioSocketChannel.class).handler(new ChannelInitializer<SocketChannel>() {
                         @Override
                         protected void initChannel(SocketChannel socketChannel) throws Exception {
                             socketChannel.pipeline().addLast(
+                                    sslCtx.newHandler(socketChannel.alloc(), HOST, PEER_PORT),
                                     new LoggingHandler("EndLogger", LogLevel.INFO),
-                                    new ObjectDecoder(1024*1024*10,ClassResolvers.cacheDisabled(null)),
+                                    new ObjectDecoder(ClientWrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
                                     new ObjectEncoder(),
                                     new ObjectInboundHandler(),
                                     new ClientAnswerHandler()
@@ -285,15 +574,21 @@ public class Network{
                         if(!channelFuture.isSuccess()) {
                             System.out.println("Connnection failed!");
                         } else {
-                            System.out.println("Connection success!");
-                            requestFilesList(pathHolder.getServerPath());
+                            System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
+                            //метод на изменение статуса сети
+                            requestAuth(login, password);
                         }
 
                     }).sync();
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
+                    System.out.println("Thread interruption exeption!");
                     e.printStackTrace();
-                } finally {
+                } catch (SSLException o) {
+                    System.out.println("SSL Exception!");
+                    o.printStackTrace();
+                }
+                finally {
                     shutdown();
                 }
             }
@@ -302,8 +597,15 @@ public class Network{
         networkThread.start();
     }
 
-    public ChannelFuture getCf() {
-        return cf;
+    public void requestAuth(String login, String password) {
+        if(networkThread == null) {
+            System.out.println("Запускаю сеть!");
+            startNetwork(login, password);
+        } else if (networkThread.isAlive()) {
+            System.out.println("Отправлены авторизационные данные!");
+            AuthData authData = new AuthData(login, password);
+            cf.channel().writeAndFlush(authData);
+        }
     }
 
     public void shutdown() {
@@ -312,11 +614,50 @@ public class Network{
     }
 
     /**
-     * Принимает на вход список имен файлов в директории, где находится клиент выполняет запись этих файлов в канал
+     * Принимает на вход список Path и команду {@link Request} на их обработку.
+     * @param os  List String-ключей для ClientMap
+     * @param requestType  команда для обработки списка файлов
      * */
-    public void sendFileToCloud(ObservableList<String> os) {
-            os.stream().map((s) -> Paths.get(pathHolder.getClientPath() + "/" + s)).forEach(consumer);
-//        requestFilesList(pathHolder.getServerPath());
+    public void filesHandler(ObservableList<String> os, Request.RequestType requestType) {
+            os.stream().map(pathHolder.getClientPathMap()::get).forEach((path -> {
+                if (Files.exists(path)) {
+                    try {
+                        Files.walkFileTree(path, new MyFileVisitor(cf.channel(), requestType)
+                        );
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }));
+        requestFilesListFromServer(getPathHolder().getServerPath());
+    }
+
+    /**
+    * Метод отправляет запрос {@link Request} к серверу на получение списка файлов в указанной дидектории на сервере
+     *
+     * */
+
+    public void requestFilesListFromServer(Path path) {
+        Request request = new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(Paths.get("root").toFile());
+        if (path!=null) {
+            request.setServerPath(path.toFile());
+        }
+        System.out.println("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
+        cf.channel().writeAndFlush(request);
+    }
+
+    public void sendFilesRequest(ObservableList<String> os, Request.RequestType requestType) {
+        List <File> filesList = new ArrayList<>();
+        os.stream().map(key -> pathHolder.getServerPathMap().get(key).toFile()).forEach(filesList::add);
+
+        System.out.println("Запрос файлов из облака " + filesList);
+        cf.channel().writeAndFlush(new Request()
+                .setRequestType(requestType)
+                .setFileList(filesList));
+    }
+
+    public PathHolder getPathHolder() {
+        return pathHolder;
     }
 
     public Controller getController() {
@@ -327,130 +668,107 @@ public class Network{
         Network.controller = controller;
     }
 
-    /**
-    * Метод отправляет запрос {@link Request} к серверу на получение списка файлов в указанной дидектории на сервере
-     * @param path локальный адрес на сервере
-     * */
-
-    public void requestFilesList(String path) {
-        System.out.println("Запрашиваю список файлов в каталоге " + path);
-        cf.channel().writeAndFlush(new Request().setRequestType(Request.RequestType.FILELIST).setServerPath(path));
-    }
-
-    public void requestFile(ObservableList<String> os) {
-        List <String> filesList = new ArrayList<>();
-        filesList.addAll(os);
-        System.out.println("Запрос файлов из облака " + filesList);
-        cf.channel().writeAndFlush(new Request()
-                .setRequestType(Request.RequestType.GETFILES)
-                .setServerPath(pathHolder.getServerPath())
-                .setFileList(filesList)
-                .setClientPath(pathHolder.getClientPath()));
-    }
-
-    public PathHolder getPathHolder() {
-        return pathHolder;
-    }
-
-
-    Consumer<Path> consumer = p -> {
-
-            if (Files.exists(p)) {
-                    try {
-                        Files.walkFileTree(p, new FileVisitor<Path>() {
-                            @Override
-                            public FileVisitResult preVisitDirectory(Path dir, BasicFileAttributes attrs) throws IOException {
-                                pathHolder.setClientPath(dir.toString());
-                                pathHolder.setServerPath(pathHolder.getServerPath() + "/" + dir.getFileName().toString());
-                                System.out.println("Зашли в директорию на клиенте: "+ pathHolder.getClientPath());
-                                System.out.println("Зашли в директорию на сервере: " + pathHolder.getServerPath());
-                                return FileVisitResult.CONTINUE;
-                            }
-
-                            @Override
-                            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                                writeIntoChannel(file);
-                                return FileVisitResult.CONTINUE;
-                            }
-
-                            @Override
-                            public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-                                System.out.println("Ошибка отправки файла");
-                                return null;
-                            }
-
-                            @Override
-                            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                                String clientPath = pathHolder.getClientPath();
-                                System.out.println("Путь перед выходом:" + clientPath);
-                                pathHolder.setClientPath(Factory.giveStepBackPath(clientPath));
-                                pathHolder.setServerPath(Factory.giveStepBackPath(pathHolder.getServerPath()));
-                                System.out.println("Вышли из дериктории клиента: "+ pathHolder.getClientPath());
-                                System.out.println("Вышли из директории сервера: " + pathHolder.getServerPath());
-                                return FileVisitResult.CONTINUE;                            }
-                        });
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-
-
-                }
-        System.out.println("В конце директория клиента: " + pathHolder.getClientPath());
-        System.out.println("В конце директория сервера: " + pathHolder.getServerPath());
-    };
-
-    private void writeIntoChannel(Path path) {
-        System.out.printf("Файл %s будет записан в канал и размещен в папке %s на сервере", path.getFileName().toString(), pathHolder.getServerPath());
-        System.out.println();
-//        try {
-//            CloudWrappedObject cwo = CloudWrappedObject.wrapFile(path, pathHolder.getClientPath(), pathHolder.getServerPath());
-//            cf.channel().writeAndFlush(cwo).addListener((ChannelFutureListener) channelFuture -> {
-//                System.out.println("Writing Complete!");
-//                requestFilesList(pathHolder.getServerPath());
-//            });
-//        } catch (IOException a) {
-//            System.out.println("Ошибка записи");
-//            a.printStackTrace();
-//        }
-    }
 
 
 
-}
+}package com.filippov;
 
-public class PathHolder {
 
-    private final String clientRootPath = "CloudStorageClientV2/Storage";
-    private final String serverRootPath = "CloudStorageServer/Storage";
-    private String clientPath;
-    private String serverPath;
+ import java.nio.file.Path;
+ import java.nio.file.Paths;
+ import java.util.HashMap;
 
-    public PathHolder() {
-        this.clientPath = clientRootPath;
-        this.serverPath = serverRootPath;
-//        System.out.println(clientPath);
-//        System.out.println(clientRootPath);
-    }
+ public class PathHolder {
 
-    public String getClientPath() {
-        return clientPath;
-    }
+     public static final Path baseLocalPath = Paths.get("", "ClientStorage");
+     public static final Path baseServerPath = Paths.get("root");
+     private Path clientPath;
+     private Path serverPath;
+     private final HashMap <String, Path> clientPathMap = new HashMap<>();
+     private final HashMap <String, Path> serverPathMap = new HashMap<>();
 
-    public void setClientPath(String clientPath) {
-        this.clientPath = clientPath;
-    }
+     public PathHolder() {
+         this.clientPath = Paths.get("");
+         this.serverPath = baseServerPath;
+         System.out.println("Определение корневого пути: " + baseLocalPath.toAbsolutePath());
+     }
 
-    public String getServerPath() {
-        return serverPath;
-    }
+     public Path getClientPath() {
+         return clientPath;
+     }
 
-    public void setServerPath(String serverPath) {
-        this.serverPath = serverPath;
-    }
-}
+     public void setClientPath(Path clientPath) {
+ //        if(clientPath==null)
+ //            this.clientPath = Paths.get("");
+         this.clientPath = clientPath;
+     }
 
+     public Path getServerPath() {
+         return serverPath;
+     }
+
+     public void setServerPath(Path serverPath) {
+         if(serverPath==null)
+             this.serverPath = Paths.get("root");
+         this.serverPath = serverPath;
+     }
+
+     public HashMap<String, Path> getClientPathMap() {
+         return clientPathMap;
+     }
+
+     public HashMap<String, Path> getServerPathMap() {
+         return serverPathMap;
+     }
+ }
+
+
+Клиентские хэндлеры:
 package com.filippov.Handlers;
 
+import com.filippov.ClientMain;
+import com.filippov.Network;
+import com.filippov.Request;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
+
+import java.io.File;
+import java.util.function.Consumer;
+
+public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        try {
+            Request request = (Request) msg;
+            switch (request.getAnswerType()) {
+                case FILELIST: {
+                    System.out.println("Обновляю список файлов на сервере " + request.getFileList().toString());
+                    Network.getInstance().getController().refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
+                    break;
+                }
+                case AUTH_SUCCESS: {
+                    System.out.println("Авторизация успешна!");
+                    ClientMain.clientMain.setMainScene();
+                    Network.getInstance().requestFilesListFromServer(null);
+                    break;
+                }
+                default: {
+                    System.out.println("Неизвестный ответ");
+                    break;
+                }
+            }
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
+    }
+}
+package com.filippov.Handlers;
+
+import com.filippov.*;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 
 
 public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
@@ -464,41 +782,11 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
                     ctx.fireChannelRead(request);
                     return;
                 }
-                System.out.println("Получен запрос! Отправляю в парсер запросов!");
-                RequestHandler.parse((Request)msg, ctx);
             }
             else {
-                CloudWrappedObject cwo = (CloudWrappedObject) msg;
-                System.out.println(cwo.getMsg());
+                WrappedFile wrappedFile = (WrappedFile) msg;
                 System.out.println("Отправляю в парсер объектов!");
-                CWOHandler.parse(cwo);
-            }
-        } finally {
-            Network.getInstance().getController().refreshLocalFileList(Network.getInstance().getPathHolder().getClientPath());
-            ReferenceCountUtil.release(msg);
-        }
-    }
-}
-
-package com.filippov.Handlers;
-
-
-public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
-    @Override
-    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
-        try {
-            Request request = (Request) msg;
-            switch (request.getAnswerType()) {
-                case FILELIST: {
-                    System.out.println("Обновляю список файлов на сервере " + request.getFileList() );
-                    Network.getInstance().getPathHolder().setServerPath(request.getServerPath());
-                    Network.getInstance().getController().refreshServerFileList(request.getFileList());
-                    break;
-                }
-                default: {
-                    System.out.println("Неизвестный ответ");
-                    break;
-                }
+                ClientWrappedFileHandler.parseToSave(wrappedFile);
             }
         } finally {
             ReferenceCountUtil.release(msg);
@@ -507,130 +795,110 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
 }
 
 
-Общие классы (CloudObjectCommonFiles):
+Общий код и код Hibernate:
 
+package com.filippov;
+
+import lombok.Getter;
+import lombok.Setter;
+
+import java.io.*;
 
 @Getter
 @Setter
-public class CloudWrappedObject implements Serializable {
+public class WrappedFile implements Serializable {
 
     private TypeEnum typeEnum;
     private byte[] bytes;
-    private long hashSum;
-    private int parcelNumber;
-    private int parcelsInObject;
+    private long chunkNumber;
+    private long chunkslsInFile;
     private String fileName;
-    private String localPath;
-    private String baseTargetPath;
-    private String msg;
-
-    public CloudWrappedObject(TypeEnum typeEnum, byte[] bytes, String fileName, String localPath, String baseTargetPath) {
-        this.typeEnum = typeEnum;
-        this.bytes = bytes;
-        this.fileName = fileName;
-        this.localPath = localPath;
-        this.baseTargetPath = baseTargetPath;
-    }
+    private File localPath;
+    private File targetPath;
+    //Не передавать login по каналу! Использовать только на сервере! Дописывать в AuthHandlere-e.
+    private String login;
 
     public enum TypeEnum {
-        FILE, SEPARATEDFILE
+        FILE, CHUNKED
     }
 
-    public static CloudWrappedObject wrapFile(Path path, String localPath, String baseTargetPath) throws IOException {
-        System.out.println("-----------------------------");
-        System.out.printf("Wrapping object %s in directory %s into %s Server Folder: ", path.getFileName().toString(), localPath, baseTargetPath);
-
-        byte[] bytes = null;
-//        if (Files.exists(path)) {
-        bytes = Files.readAllBytes(path);
-//        }
-        CloudWrappedObject cwo = new CloudWrappedObject(CloudWrappedObject.TypeEnum.FILE, bytes, path.getFileName().toString(), localPath, baseTargetPath);
-        System.out.println("Байтов прочитано " + bytes.length);
-        return cwo;
+    public WrappedFile(TypeEnum typeEnum, byte[] bytes, long chunkNumber, long chunkslsInFile, String fileName, File targetPath) {
+        this.typeEnum = typeEnum;
+        this.bytes = bytes;
+        this.chunkNumber = chunkNumber;
+        this.chunkslsInFile = chunkslsInFile;
+        this.fileName = fileName;
+        this.targetPath = targetPath;
     }
 
-}
-
-
-public class CWOHandler {
-
-    public static void parse(CloudWrappedObject cwo) {
-        switch (cwo.getTypeEnum()) {
-            case FILE: writeIntoFile(cwo); break;
-            default: showError(); break;
-        }
+    public WrappedFile setTypeEnum(TypeEnum typeEnum){
+        this.typeEnum = typeEnum;
+        return this;
+    }
+    public WrappedFile setBytes(byte[] bytes){
+        this.bytes = bytes;
+        return this;
+    }
+    public WrappedFile setFileName(String fileName){
+        this.fileName = fileName;
+        return this;
+    }
+    public WrappedFile setLocalPath(File localPath){
+        this.localPath = localPath;
+        return this;
+    }
+    public WrappedFile setTargetPath(File targetPath){
+        this.targetPath = targetPath;
+        return this;
+    }
+    public WrappedFile setChunkNumber(long chunkNumber){
+        this.chunkNumber = chunkNumber;
+        return this;
+    }
+    public WrappedFile setChunksInFile(long chunksInFile) {
+        this.chunkslsInFile = chunksInFile;
+        return this;
     }
 
-    private static void showError() {
-        System.out.println("Неизвестная команда или данные повреждены");
-    }
-
-
-    private static void writeIntoFile(CloudWrappedObject cwo) {
-        System.out.println("ЦВО Парсер");
-        String baseTargetPath = cwo.getTargetPath();
-        Path path = Paths.get(baseTargetPath + "/" + cwo.getFileName());
-        System.out.println(path.toString());
-
-        if(!Files.exists(path)){
-            try {
-                Files.createDirectories(Paths.get(baseTargetPath));
-                Files.createFile(path);
-                Files.write(path,cwo.getBytes());
-            } catch (IOException e) {
-                System.out.println("Не удалось записать файл!");
-                e.printStackTrace();
-            }
-        } else {
-            System.out.println("Файл уже существует");
-        }
-    }
-
-
-public class Factory {
-
-    public static List<String> giveFileList(String path) {
-        List<String> fileList = new ArrayList<>();
-        try {
-            Files.walk(Paths.get(path),1).forEach(p -> {
-                fileList.add(p.getFileName().toString());
-            });
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return fileList;
-    }
-
-    public static String giveStepBackPath(String oldPath) {
-        System.out.println("Меняю старый путь: " + oldPath);
-        String[] oldPathArray = oldPath.split("/");
-        String[] newPathArray = Arrays.copyOfRange(oldPathArray,0,oldPathArray.length-1);
-        StringBuilder builder = new StringBuilder();
-        Arrays.stream(newPathArray).forEach((s)-> {
-            builder.append(s + '/');
-        });
-        String newPath = builder.toString();
-        System.out.println("Новый путь: " + newPath);
-        return newPath;
+    public WrappedFile setLogin(String login) {
+        this.login = login;
+        return this;
     }
 }
+package com.filippov;
 
+import lombok.Getter;
 
+import java.io.File;
+import java.io.Serializable;
+import java.nio.file.Path;
+import java.util.List;
 
 @Getter
 public class Request implements Serializable {
 
     public enum RequestType {
-        ANSWER, AUTH, FILELIST, GETFILES, ECHO, DELETEFILES;
+        ANSWER, AUTH, AUTH_SUCCESS, FILELIST, GETFILES, SENDFILES, DELETEFILES, CREATE_FOLDER;
     }
+
 
     private RequestType requestType;
     private RequestType answerType;
-    private String serverPath;
-    private String clientPath;
-    private List<String> fileList;
+    private File serverPath;
+//    private File clientPath;
+    private List<File> fileList;
+    private String login;
 
-    public Request setRequestType(Request.RequestType requestType){
+    public Request(RequestType requestType, RequestType answerType, File serverPath, List<File> fileList) {
+        this.requestType = requestType;
+        this.answerType = answerType;
+        this.serverPath = serverPath;
+        this.fileList = fileList;
+    }
+
+    public Request() {}
+
+        public Request setRequestType(Request.RequestType requestType){
         this.requestType = requestType;
         return this;
     }
@@ -640,35 +908,506 @@ public class Request implements Serializable {
         return this;
     }
 
-    public Request setServerPath(String serverPath) {
+    public Request setServerPath(File serverPath) {
         this.serverPath = serverPath;
         return this;
     }
-    public Request setClientPath(String clientPath) {
-        this.clientPath = clientPath;
-        return this;
-    }
+//    public Request setClientPath(File clientPath) {
+//        this.clientPath = clientPath;
+//        return this;
+//    }
 
-    public Request setFileList (List<String> fileList) {
+    public Request setFileList (List<File> fileList) {
         this.fileList = fileList;
         return this;
     }
+
+    //Login дописывается отдельно в AuthHandler на сервере.
+    public String getLogin() {
+        return login;
+    }
+
+    public void setLogin(String login) {
+        this.login = login;
+    }
+}
+public class Factory {
+
+    public static List<Path> giveFileList(Path path) {
+        List<Path> fileList = new ArrayList<>();
+        System.out.println(path.toString());
+        try {
+            Files.walk(path,1).forEach(p -> {
+                fileList.add(p);
+            });
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fileList.remove(0);
+        return fileList;
+    }
+
+    package com.filippov;
+
+
+    import org.apache.commons.codec.digest.DigestUtils;
+
+    import java.io.Serializable;
+
+    public class AuthData implements Serializable {
+
+        private String login;
+        private String password;
+
+        public AuthData(String login, String password) {
+            this.login = DigestUtils.md5Hex(login);
+            this.password = DigestUtils.md5Hex(password);
+        }
+
+        public String getLogin() {
+            return login;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+    }
+
+Код Hibernate:
+package com.filippov.HibernateUtils;
+
+import javax.persistence.*;
+import java.util.Objects;
+
+@Entity
+@Table(name = "authdata", schema = "cloudstoragedb", catalog = "")
+public class AuthDataEntity {
+    private int id;
+    private String login;
+    private String password;
+
+    @Id
+    @Column(name = "id", nullable = false)
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    @Basic
+    @Column(name = "login", nullable = false, length = 128)
+    public String getLogin() {
+        return login;
+    }
+
+    public void setLogin(String login) {
+        this.login = login;
+    }
+
+    @Basic
+    @Column(name = "password", nullable = false, length = 128)
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        AuthDataEntity that = (AuthDataEntity) o;
+        return id == that.id &&
+                Objects.equals(login, that.login) &&
+                Objects.equals(password, that.password);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, login, password);
+    }
+}
+package com.filippov.HibernateUtils;
+
+import javax.persistence.*;
+import java.util.Objects;
+
+@Entity
+@Table(name = "files", schema = "cloudstoragedb", catalog = "")
+public class FilesEntity {
+    private String pathNameHash;
+    private String fileName;
+    private String path;
+    private String children;
+    private AuthDataEntity authdataById;
+
+    @Id
+    @Column(name = "path_name_hash", nullable = false, length = 128)
+    public String getPathNameHash() {
+        return pathNameHash;
+    }
+
+    public void setPathNameHash(String pathNameHash) {
+        this.pathNameHash = pathNameHash;
+    }
+
+    @Basic
+    @Column(name = "file_name", nullable = false, length = 128)
+    public String getFileName() {
+        return fileName;
+    }
+
+    public void setFileName(String fileName) {
+        this.fileName = fileName;
+    }
+
+    @Basic
+    @Column(name = "path", nullable = true, length = 128)
+    public String getPath() {
+        return path;
+    }
+
+    public void setPath(String path) {
+        this.path = path;
+    }
+
+    @Basic
+    @Column(name = "children", length = 128)
+    public String getChildren() { return children;}
+
+    public void setChildren(String children) { this.children = children;}
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FilesEntity that = (FilesEntity) o;
+        return Objects.equals(pathNameHash, that.pathNameHash) &&
+                Objects.equals(fileName, that.fileName) &&
+                Objects.equals(path, that.path) &&
+                Objects.equals(children, that.children);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(pathNameHash, fileName, path, children);
+    }
+
+    @ManyToOne
+    @JoinColumn(name = "id", referencedColumnName = "id", nullable = false)
+    public AuthDataEntity getAuthdataById() {
+        return authdataById;
+    }
+
+    public void setAuthdataById(AuthDataEntity authdataById) {
+        this.authdataById = authdataById;
+    }
+}
+package com.filippov.HibernateUtils;
+
+import com.filippov.AuthData;
+import com.filippov.Request;
+import org.apache.commons.codec.digest.DigestUtils;
+import org.hibernate.Session;
+import org.hibernate.Transaction;
+import org.hibernate.query.Query;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
+
+public class Utils {
+
+
+//    public static void writeNewClientAuthData(AuthData authData) {
+//        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+//        session.beginTransaction();
+//        ///
+//        AuthDataEntity authDataEntity = new AuthDataEntity();
+//        authDataEntity.setLogin(authData.getLogin());
+//        authDataEntity.setPassword(authData.getPassword());
+//        ///
+//        session.save(authDataEntity);
+//        session.getTransaction().commit();
+//        session.close();
+//    }
+
+    private static AuthDataEntity getAuthDataEntityByLoginAndPassword (Session session, String login_hash, String password_hash) {
+        Query query = session.createQuery("from AuthDataEntity where login=:paramName1 AND password =:paramName2");
+        query.setParameter("paramName1", login_hash);
+        query.setParameter("paramName2", password_hash);
+        List list = query.list();
+        if(!list.isEmpty()) {
+            return (AuthDataEntity) list.get(0);
+        }
+        return null;
+    }
+
+    private static AuthDataEntity getLoginID (Session session, String login_hash) {
+        Query query = session.createQuery("from AuthDataEntity where login=:paramName1");
+        query.setParameter("paramName1", login_hash);
+        List list = query.list();
+        if(!list.isEmpty()) {
+            return (AuthDataEntity) list.get(0);
+        }
+        return null;
+    }
+
+    public static boolean checkAuthData(AuthData authData) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getAuthDataEntityByLoginAndPassword(session, authData.getLogin(), authData.getPassword());
+        session.close();
+        return authDataEntity!=null;
+    }
+
+    public static void createFileRecord(String login, String path, String fileName, String pathNameHash, String children) {
+        System.out.println("Запись в БД!");
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session,login);
+
+        if (!isFileAlreadyExist(session, authDataEntity, pathNameHash)) {
+            ///
+            FilesEntity filesEntity = new FilesEntity();
+            filesEntity.setPath(path);
+            filesEntity.setFileName(fileName);
+            filesEntity.setPathNameHash(pathNameHash);
+            filesEntity.setAuthdataById(authDataEntity);
+            filesEntity.setChildren(children);
+            ///
+            session.beginTransaction();
+            session.save(filesEntity);
+            session.getTransaction().commit();
+        } else {
+            System.out.println("Запись уже существует!");
+        }
+        session.close();
+    }
+
+    public static boolean deleteFileRecord(String login, File file) {
+        System.out.println("Удаление из БД!");
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session,login);
+        System.out.println("Login is: " + authDataEntity.getLogin());
+        Transaction tx = session.beginTransaction();
+        System.out.println("Удаляю файл: " + file);
+        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND pathNameHash =: paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        query.setParameter("paramName2", DigestUtils.md5Hex(file.getParent() + file.getName()));
+        System.out.println("Операция выполнено: " + query.executeUpdate());
+        tx.commit();
+        session.close();
+        return true;
+    }
+
+    public static boolean isThatDirectory(String login, File file) {
+        //если запрошен корень - просто возвращаем true
+        if(file.getName().equals("root")) {
+            return true;
+        }
+        FilesEntity filesEntity = isRecordExist(login, file);
+        return filesEntity.getChildren()!=null;
+    }
+
+    public static List<File> fileList (String login, File path) {
+        List <FilesEntity> filesEntityList = filesEntityList(login, path);
+        List <File> filesList = new ArrayList<>();
+        filesEntityList.stream().map(filesEntity -> new File(filesEntity.getPath(),filesEntity.getFileName())).forEach(filesList::add);
+        return filesList;
+    }
+
+    private static List<FilesEntity> filesEntityList (String login, File path) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session, login);
+        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
+        System.out.println(path.getPath());
+        query.setParameter("paramName2", path.getPath());
+        query.setParameter("paramName1", authDataEntity);
+        List list = query.list();
+        session.close();
+        return list;
+    }
+
+    private static boolean isFileAlreadyExist(Session session, AuthDataEntity authDataEntity, String pathNameHash) {
+        Query query = session.createQuery("from FilesEntity where authdataById =:paramName1 AND pathNameHash =:paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        query.setParameter("paramName2", pathNameHash);
+        return !query.list().isEmpty();
+    }
+
+    private static FilesEntity isRecordExist(String login, File path) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session, login);
+        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path_name_hash =:paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        System.out.println(path);
+        query.setParameter("paramName2", DigestUtils.md5Hex(path.getParent()+ path.getName()));
+        List <FilesEntity> list = query.list();
+        if (list.size()==1) {
+            return list.get(0);
+        }
+        return null;
+    }
+
+    public static Path getRecordedPath(String login, File path) {
+        FilesEntity filesEntity = isRecordExist(login, path);
+        return Paths.get(login, filesEntity.getPathNameHash());
+    }
+
+    public static int deleteFolders(String login, File path) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        AuthDataEntity authDataEntity = getLoginID(session, login);
+        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND path LIKE :paramName2");
+//        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path LIKE :paramName2");
+        query.setParameter("paramName1", authDataEntity);
+        query.setParameter("paramName2", path+"%");
+        System.out.println("Путь для удаления папки: " + path);
+//        List <FilesEntity> filesEntityList = query.list();
+//        List <File> filesList = new ArrayList<>();
+//        filesEntityList.stream().map(filesEntity -> new File(filesEntity.getPath(),filesEntity.getFileName())).forEach(filesList::add);
+        Query query1 = session.createQuery("DELETE FilesEntity WHERE authdataById = :paramName1 AND pathNameHash = :paramName2");
+        query1.setParameter("paramName1", authDataEntity);
+        query1.setParameter("paramName2", DigestUtils.md5Hex(path.getParent() + path.getName()));
+        Transaction tx = session.beginTransaction();
+        int deleted = query.executeUpdate();
+        deleted += query1.executeUpdate();
+        tx.commit();
+        session.close();
+        return deleted;
+    }
 }
 
+Код сервера:
 
+package com.filippov;
 
+import com.filippov.Handlers.AuthHandler;
+import com.filippov.Handlers.ObjectInboundHandler;
+import com.filippov.Handlers.ServerChannelInitializer;
+import com.filippov.HibernateUtils.HibernateSessionFactory;
+import io.netty.bootstrap.ServerBootstrap;
+import io.netty.channel.*;
+import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.socket.nio.NioServerSocketChannel;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public class RequestHandler {
+public class Server {
+    ChannelFuture channelFuture;
+    public static final Path rootPath = Paths.get("","ServerStorage").toAbsolutePath();
+
+    public void run() throws Exception {
+        System.out.println(rootPath.toAbsolutePath().toString());
+
+        EventLoopGroup bossGroup = new NioEventLoopGroup();
+        EventLoopGroup workerGroup = new NioEventLoopGroup();
+        try {
+            ServerBootstrap bootstrap = new ServerBootstrap();
+            bootstrap.group(bossGroup,workerGroup)
+                    .channel(NioServerSocketChannel.class)
+                    .childHandler(new ServerChannelInitializer())
+                    .childOption(ChannelOption.SO_KEEPALIVE,true);
+
+            channelFuture = bootstrap.bind("127.0.0.1", 8189).addListener(new ChannelFutureListener() {
+                @Override
+                public void operationComplete(ChannelFuture channelFuture) throws Exception {
+                    System.out.println("Сервер запущен на порту " + channelFuture.channel().localAddress().toString());
+                }
+            }).sync();
+
+            channelFuture.channel().closeFuture().sync();
+
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            workerGroup.shutdownGracefully();
+            bossGroup.shutdownGracefully();
+        } finally {
+            workerGroup.shutdownGracefully();
+            bossGroup.shutdownGracefully();
+        }
+    }
+}
+
+package com.filippov;
+
+import com.filippov.HibernateUtils.Utils;
+import io.netty.channel.ChannelHandlerContext;
+import org.apache.commons.codec.digest.DigestUtils;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+
+public class ServerRequestHandler{
 
     public static void parse(Request request, ChannelHandlerContext ctx) {
+
         switch (request.getRequestType()){
             case FILELIST: sendFileList(request,ctx);
                 break;
-            case GETFILES: writeFilesIntoCTX(request, ctx);
+            case GETFILES: {
+                System.out.println("Получен запрос на отправку файлов: " + request.getFileList());
+                for (File file : request.getFileList()) {
+                    ServerWrappedFileHandler.parseToSend(request.getLogin(), file, ctx.channel(), null);
+                }
                 break;
+            }
+            case DELETEFILES: {
+                deleteFiles(request.getLogin(), request.getFileList());
+                break;
+            }
+            case CREATE_FOLDER: {
+                String folderName = request.getServerPath().getName();
+                String serverPath = request.getServerPath().getParent();
+                String pathNameHash = DigestUtils.md5Hex(serverPath + folderName);
+                Utils.createFileRecord(request.getLogin(),
+                        request.getServerPath().getParent(),
+                        request.getServerPath().getName(),
+                        pathNameHash,
+                        request.getServerPath().getPath());
+            }
             default:
                 System.out.println("Неизвестный тип Request");
                 break;
+        }
+    }
+
+    private static void deleteFiles(String login, List<File> fileList) {
+        System.out.println("Удаление файлов! " + fileList);
+        //проверить наличие записи в базе и наличие файла на диске, затем удалить файл, затем удалить запись в базе.
+        for (File file : fileList) {
+            //если это папка то работаем как с папкой
+            if(Utils.isThatDirectory(login, file)) {
+                System.out.println("Удаляем папку c содержимым!");
+                System.out.println("Удалено обьектов " + Utils.deleteFolders(login, file));
+                // работает не совсем корректно - не хватило времени дописать!
+                continue;
+            }
+            //если это файл - конструируем абсолютный путь к файлу и работаем с файлом
+            //получаем путь из БД
+            Path dbPath = Utils.getRecordedPath(login,file);
+            Path serverPath = Paths.get(Server.rootPath.toString(),dbPath.toString());
+            //если файл существует в БД и на сервере
+            if(Files.exists(serverPath)) {
+                try {
+                    //удаляем запись на диске сервера
+                    Files.delete(serverPath);
+                    //удаляем запись в БД
+                    Utils.deleteFileRecord(login, file);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
@@ -676,46 +1415,354 @@ public class RequestHandler {
      * Метод выдергивает из {@link Request} адрес каталога и отправляет список файлов в этом каталоге.
      * При указании файла вместо каталога ничего не отправляется.
      * */
-    public static void sendFileList(Request request, ChannelHandlerContext ctx) {
-        String path= "CloudStorageServer/Storage";
-        if(request.getServerPath() == null || request.getServerPath().equals("root")) {
-            System.out.println("Получен запрос на отправку списка файлов в корневом каталоге.");
-        } else {path = request.getServerPath();}
-        if (Files.isDirectory(Paths.get(path))){
-            List<String> fileList = Factory.giveFileList(path);
-            ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.FILELIST).setFileList(fileList).setServerPath(path));
-            System.out.println("Отправлен список файлов в каталоге " + path);
+    private static void sendFileList(Request request, ChannelHandlerContext ctx) {
+        //проверка - директория или файл (у директории есть children)
+        if(Utils.isThatDirectory(request.getLogin(), request.getServerPath())){
+            System.out.println("Запрос на список файлов в каталоге: " + request.getServerPath());
+            List<File> fileList = Utils.fileList(request.getLogin(), request.getServerPath());
+            System.out.println("Отправляю список файлов в каталоге " + request.getServerPath().toString() + ": " + fileList.toString());
+            ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER)
+                    .setAnswerType(Request.RequestType.FILELIST)
+                    .setFileList(fileList)
+            );
+            return;
         }
-        System.out.println("Запрошенный путь не является каталогом");
+            System.out.println("Запрошенная директория является файлом! Здесь могла быть ваша реклама!");
     }
 
+}
+package com.filippov;
 
-    public static void writeFilesIntoCTX(Request request, ChannelHandlerContext ctx) {
-        String serverPath = request.getServerPath();
-        String clientPath = request.getClientPath();
-        List<String> filesList = request.getFileList();
-        System.out.println("Получен запрос на отправку файлов: " + filesList);
-        filesList.stream().map((s) -> Paths.get(serverPath + File.separator + s)).forEach(path -> {
-            if(Files.exists(path)) {
-                System.out.println("Файл " + path.toString() + "существует");
-                System.out.println(path.getFileName().toString());
-                CloudWrappedObject cwo = null;
-                try {
-                    cwo = CloudWrappedObject.wrapFile(path,serverPath,clientPath);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-                ctx.writeAndFlush(cwo).addListener(new ChannelFutureListener() {
-                    @Override
-                    public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                        System.out.println("Writing Complete!");
-                    }
-                });
+import com.filippov.HibernateUtils.Utils;
+import io.netty.channel.Channel;
+import io.netty.channel.ChannelFutureListener;
+import org.apache.commons.codec.digest.DigestUtils;
+
+import java.io.BufferedInputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.List;
+
+public class ServerWrappedFileHandler {
+
+    public static int byteBufferSize = 1024*1024*5;
+
+
+    public static void parseToSave(WrappedFile wrappedFile) {
+        switch (wrappedFile.getTypeEnum()) {
+            case FILE: saveFile(wrappedFile); break;
+            case CHUNKED: saveChunk(wrappedFile); break;
+            default: showError(); break;
+        }
+    }
+
+    public static void parseToSend(String login, File file, Channel channel, Path startPath) {
+        // базовый путь
+        Path relativePath;
+        // если запрашиваемый файл это папка - запускаем рекурсию пока не доберемся до файлов
+        if (Utils.isThatDirectory(login, file)) {
+            if (startPath == null) {
+                startPath = file.toPath().getParent(); // это можно получить и из БД
+                System.out.println("Startpath установлен как: " + startPath);
             }
-        });
+            System.out.println("Работаем с директорией!");
+            List <File> files = Utils.fileList(login, file);
+            System.out.println("Список файлов в директории " + file + ": " + files );
+            for (File f : files) {
+                parseToSend(login, f, channel, startPath);
+            }
+            return;
+        }
+        // далее блок работы с файлами
+        //если в запросе были папки  - конструируем путь чтобы сохранить файловую структуру сервера у клиента.
+            if (startPath != null) {
+                relativePath = startPath.relativize(file.toPath());
+                System.out.println("RelativePath установлен как: " + relativePath);
+            } else {
+                 relativePath = Paths.get("root");
+            }
+        //определяем реальный путь к файлу в хранилище сервера
+            Path serverPath = Paths.get(Server.rootPath.toString(), Utils.getRecordedPath(login, file).toString());
+
+            if (!Files.exists(serverPath)) {
+                System.out.println("Запрошенный файл не найден!");
+                return;
+            }
+
+            long fileSize = 0;
+            try {
+                fileSize = Files.size(serverPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
+            }
+
+            if (fileSize <= byteBufferSize)
+                wrapAndWriteFile(serverPath, relativePath, file.getName(), channel);
+            else
+                wrapAndWriteChunk(serverPath, relativePath, file.getName(), channel);
     }
+
+    public static void wrapAndWriteFile(Path serverPath, Path targetPath, String fileName, Channel channel) {
+        System.out.printf("Файл %s будет записан в канал и размещен в папке %s ", fileName, targetPath.toString());
+        System.out.println();
+        try {
+            byte[] bytes = null;
+            bytes = Files.readAllBytes(serverPath);
+
+            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
+                    1,1,
+                    fileName, targetPath.toFile());
+
+            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                System.out.println("Writing Complete!");
+            });
+        } catch (IOException a) {
+            System.out.println("Ошибка записи");
+            a.printStackTrace();
+        }
+    }
+
+    public static void wrapAndWriteChunk(Path serverPath, Path targetPath, String fileName, Channel channel) {
+        System.out.println("-------------------------------------------------------------");
+        System.out.println("Указанный путь к файлу: " + serverPath.toString());
+        System.out.println("Имя файла: " + fileName);
+        System.out.println("Указанный удаленный путь" + targetPath.toString());
+
+        if(Files.exists(serverPath)) {
+            long chunkCounter = 1;
+            long chunks=0;
+            try {
+                if(Files.size(serverPath)%byteBufferSize == 0){
+                    chunks = Files.size(serverPath)/byteBufferSize;
+                }
+                else {
+                    chunks = Math.round(Files.size(serverPath)/byteBufferSize)+1;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            byte[] byteBuffer = new byte[byteBufferSize];
+            int bytesRed=0;
+            File file = serverPath.toFile();
+            try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
+                while ((bytesRed=bis.read(byteBuffer))>0) {
+
+                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
+                            byteBuffer, chunkCounter, chunks,
+                            fileName, targetPath.toFile());
+
+                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                        System.out.println("Writing Complete!");
+                    }).sync();
+                    chunkCounter++;
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static void saveFile(WrappedFile wrappedFile) {
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+        Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
+        System.out.println("Файл будет записан по адресу: " + path.toString());
+        try {
+            if(Files.exists(path)){
+                Files.delete(path);
+            }
+//                Files.createDirectories(path.getParent());
+            Files.write(path, wrappedFile.getBytes());
+            System.out.println("Обращение к БД!.....................................");
+            Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+        } catch (IOException e) {
+            System.out.println("Не удалось записать файл!");
+            e.printStackTrace();
+        }
+    }
+
+    private static void saveChunk(WrappedFile wrappedFile) {
+        System.out.println("Запись чанка № " + wrappedFile.getChunkNumber() + " из " + wrappedFile.getChunkslsInFile());
+        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+        Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
+            try {
+//                если файла по этому адресу еще не существует
+                if(!Files.exists(path)) {
+                    System.out.println("Записей не обнаружено! Создаю директории и пишу первый чанк!");
+                    Files.createFile(path);
+                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                    return;
+                } else if (Files.exists(path) && wrappedFile.getChunkNumber()==1) {
+                    //если запись существует, и передается чанк с номером 1 - значит файл необходимо перезаписать
+                    System.out.println("Запись обнаружена при этом записывается первый чанк! Удаляю старый файл и записываю первый чанк!");
+                    Files.delete(path);
+                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                }
+                //если это последний чанк файла вносим запись в базу данных
+                if(wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
+                    System.out.println("Запись обнаружена, пишется последний чанк " + wrappedFile.getChunkNumber() + " Всего чанков: " + wrappedFile.getChunkslsInFile());
+                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+                    System.out.println("Обращение к БД!.....................................");
+                    Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+                    return;
+                }
+                System.out.printf("Запись обнаружена, пишется чанк %d из %d \n ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
+                //если ни то, ни другое
+                Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+            } catch (IOException e) {
+                System.out.println("Не удалось записать файл!");
+                e.printStackTrace();
+            }
+    }
+
+    private static void showError() {
+        System.out.println("Неизвестная команда или данные повреждены");
+    }
+
+
+
+
 }
 
+Хэндлеры сервера:
+package com.filippov.Handlers;
+
+import com.filippov.AuthData;
+import com.filippov.HibernateUtils.Utils;
+import com.filippov.Request;
+import com.filippov.Server;
+import com.filippov.WrappedFile;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
+
+import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
+public class AuthHandler extends ChannelInboundHandlerAdapter {
+    private boolean autorizedClient;
+//    private int autorizationCounter;
+    private String login;
+
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        //если клиент авторизован
+        if(autorizedClient){
+            //если msg это запакованный файл или реквест - дописываем в файл домашнюю директорию для этого клиента (это логин в MD5)
+            if(msg instanceof WrappedFile) {
+                ((WrappedFile)msg).setLogin(login);
+            }
+            if(msg instanceof Request)
+                ((Request)msg).setLogin(login);
+
+            ctx.fireChannelRead(msg);
+        }
+        //если это авторизационные данные AuthData
+        else {
+            if(msg instanceof AuthData && Utils.checkAuthData((AuthData)msg)) {
+                autorizedClient = true;
+                System.out.println("Клиент авторизован");
+                login = ((AuthData)msg).getLogin();
+                //создание директории пользователя
+                if (!Files.exists(Paths.get(Server.rootPath.toString(), login))) {
+                    Files.createDirectory(Paths.get(Server.rootPath.toString(), login));
+                }
+                ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
+            }
+            else {
+                System.out.println("Клиент не авторизован!");
+//                autorizationCounter++;
+            }
+            ReferenceCountUtil.release(msg);
+        }
+//
+//        if (autorizationCounter>3) {
+//            ctx.channel().closeFuture().sync(); //как закрыть соединение отсюда???
+//        }
+    }
+}
+package com.filippov.Handlers;
+
+import com.filippov.Request;
+import com.filippov.ServerRequestHandler;
+import com.filippov.WrappedFile;
+import com.filippov.ServerWrappedFileHandler;
+import io.netty.channel.ChannelHandlerContext;
+import io.netty.channel.ChannelInboundHandlerAdapter;
+import io.netty.util.ReferenceCountUtil;
 
 
+public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
+    @Override
+    public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        try {
+            if (msg instanceof Request) {
+                System.out.println("Получен запрос! Отправляю в обработчик запросов!");
+                ServerRequestHandler.parse((Request)msg, ctx);
+            }
+            else {
+                WrappedFile wrappedFile = (WrappedFile) msg;
+                System.out.println("Получен запакованный файл! Отправляю на обработку и сохранение!");
+                ServerWrappedFileHandler.parseToSave(wrappedFile);
+            }
+        } finally {
+            ReferenceCountUtil.release(msg);
+        }
+    }
+}
+package com.filippov.Handlers;
+
+import com.filippov.ServerWrappedFileHandler;
+import io.netty.channel.ChannelInitializer;
+import io.netty.channel.socket.SocketChannel;
+import io.netty.handler.codec.serialization.ClassResolvers;
+import io.netty.handler.codec.serialization.ObjectDecoder;
+import io.netty.handler.codec.serialization.ObjectEncoder;
+import io.netty.handler.logging.LogLevel;
+import io.netty.handler.logging.LoggingHandler;
+import io.netty.handler.ssl.SslContext;
+import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.ssl.util.SelfSignedCertificate;
+
+import javax.net.ssl.SSLException;
+import java.security.cert.CertificateException;
+
+public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
+    private SslContext sslCtx;
+
+    @Override
+    protected void initChannel(SocketChannel socketChannel) throws Exception {
+            setupSSL();
+            socketChannel.pipeline().addLast(
+                    sslCtx.newHandler(socketChannel.alloc()),
+                    new LoggingHandler("commonLog", LogLevel.INFO),
+                    new ObjectEncoder(),
+                    new ObjectDecoder(ServerWrappedFileHandler.byteBufferSize + 1024 * 1024, ClassResolvers.cacheDisabled(null)),
+                    new AuthHandler(),
+                    new ObjectInboundHandler());
+    }
+
+    private void setupSSL() {
+        try {
+            // Configure SSL
+            SelfSignedCertificate ssc = new SelfSignedCertificate();  //-What is it?
+            sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
+            //SSL
+        } catch (SSLException e) {
+            e.printStackTrace();
+        } catch (CertificateException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+}
 

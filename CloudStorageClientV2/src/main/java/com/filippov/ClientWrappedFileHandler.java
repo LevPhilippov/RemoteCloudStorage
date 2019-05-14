@@ -43,18 +43,7 @@ public class ClientWrappedFileHandler{
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка");
-        Path targetPath = wrappedFile.getTargetPath().toPath();
-        ///
-        if(targetPath.toString().equals("root")) {
-            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
-                    Network.getInstance().getPathHolder().getClientPath().toString(),
-                    wrappedFile.getFileName());
-            System.out.println("Файл будет записан по адресу: " + targetPath);
-        } else {
-            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
-                    Network.getInstance().getPathHolder().getClientPath().toString(),
-                    wrappedFile.getTargetPath().toString());
-        }
+        Path targetPath = getlocalPath(wrappedFile);
 
         try {
             //если такого файла не существует
@@ -86,18 +75,7 @@ public class ClientWrappedFileHandler{
 
 
     private static void saveFile(WrappedFile wrappedFile) {
-        Path targetPath = wrappedFile.getTargetPath().toPath();
-        ///
-        if(targetPath.toString().equals("root")) {
-            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
-                    Network.getInstance().getPathHolder().getClientPath().toString(),
-                    wrappedFile.getFileName());
-            System.out.println("Файл будет записан по адресу: " + targetPath);
-        } else {
-            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
-                    Network.getInstance().getPathHolder().getClientPath().toString(),
-                    wrappedFile.getTargetPath().toString());
-        }
+        Path targetPath = getlocalPath(wrappedFile);
         ///
         if(!Files.exists(targetPath)){
             try {
@@ -112,6 +90,22 @@ public class ClientWrappedFileHandler{
             System.out.println("Файл уже существует");
         }
         Network.getInstance().getController().refreshLocalFilesList();
+    }
+
+    private static Path getlocalPath(WrappedFile wrappedFile) {
+        Path targetPath = wrappedFile.getTargetPath().toPath();
+        ///
+        if (targetPath.toString().equals("root")) {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getFileName());
+            System.out.println("Файл будет записан по адресу: " + targetPath);
+        } else {
+            targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
+                    Network.getInstance().getPathHolder().getClientPath().toString(),
+                    wrappedFile.getTargetPath().toString());
+        }
+        return targetPath;
     }
 
 

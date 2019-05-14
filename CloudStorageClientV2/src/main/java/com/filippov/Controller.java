@@ -166,18 +166,22 @@ public class Controller implements Initializable {
     }
 
     public void delete() {
-        ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
-        if(!observableList.isEmpty()) {
-            System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
-            network.filesHandler(observableList, Request.RequestType.DELETEFILES);
+        if (false){
+            ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
+            if(!observableList.isEmpty()) {
+                System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
+                network.filesHandler(observableList, Request.RequestType.DELETEFILES);
+            }
+            refreshLocalFilesList();
         }
-        observableList = serverListView.getSelectionModel().getSelectedItems();
-        if (!observableList.isEmpty()) {
-            System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
-            network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
+        else if (false){
+            ObservableList observableList = serverListView.getSelectionModel().getSelectedItems();
+            if (!observableList.isEmpty()) {
+                System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
+                network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
+            }
+            network.requestFilesListFromServer(network.getPathHolder().getServerPath());
         }
-        refreshLocalFilesList();
-        network.requestFilesListFromServer(network.getPathHolder().getServerPath());
     }
 
     public void closeApp() {
