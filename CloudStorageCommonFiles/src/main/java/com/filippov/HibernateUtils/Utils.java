@@ -18,18 +18,22 @@ import java.util.List;
 public class Utils {
 
 
-//    public static void writeNewClientAuthData(AuthData authData) {
-//        Session session = HibernateSessionFactory.getSessionFactory().openSession();
-//        session.beginTransaction();
-//        ///
-//        AuthDataEntity authDataEntity = new AuthDataEntity();
-//        authDataEntity.setLogin(authData.getLogin());
-//        authDataEntity.setPassword(authData.getPassword());
-//        ///
-//        session.save(authDataEntity);
-//        session.getTransaction().commit();
-//        session.close();
-//    }
+    public static boolean writeNewClientAuthData(AuthData authData) {
+        Session session = HibernateSessionFactory.getSessionFactory().openSession();
+        if (getAuthDataEntityByLoginAndPassword(session, authData.getLogin(), authData.getPassword())!=null) {
+            return false;
+        }
+        session.beginTransaction();
+        ///
+        AuthDataEntity authDataEntity = new AuthDataEntity();
+        authDataEntity.setLogin(authData.getLogin());
+        authDataEntity.setPassword(authData.getPassword());
+        ///
+        session.save(authDataEntity);
+        session.getTransaction().commit();
+        session.close();
+        return true;
+    }
 
     private static AuthDataEntity getAuthDataEntityByLoginAndPassword (Session session, String login_hash, String password_hash) {
         Query query = session.createQuery("from AuthDataEntity where login=:paramName1 AND password =:paramName2");

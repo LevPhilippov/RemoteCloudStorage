@@ -12,20 +12,14 @@ import java.io.IOException;
 public class ClientMain extends Application {
 
     private static Parent root;
-    private static Parent log;
-    private static Stage primaryStage;
-    public  static ClientMain clientMain;
+    private Stage primaryStage;
+    public static ClientMain clientMain;
 
     @Override
     public void start(Stage primaryStage) throws Exception{
         clientMain=this;
         this.primaryStage = primaryStage;
-//        root = FXMLLoader.load(getClass().getResource("/log.fxml"));
-//        primaryStage.setTitle("Cloud");
-//        primaryStage.setScene(new Scene(root, 300, 200));
-//        primaryStage.setResizable(false);
-//        primaryStage.show();
-        setMainScene();
+        setLogScene();
     }
 
     public void setMainScene(){
@@ -35,8 +29,22 @@ public class ClientMain extends Application {
             } catch (IOException e) {
                 e.printStackTrace();
             }
-            primaryStage.setTitle("Cloud");
+            primaryStage.setTitle("MyCloud");
             primaryStage.setScene(new Scene(root, 800, 600));
+            primaryStage.show();
+        };
+        refreshPattern(runnable);
+    }
+    public void setLogScene(){
+        Runnable runnable = () -> {
+            try {
+                root = FXMLLoader.load(getClass().getResource("/log.fxml"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            primaryStage.setTitle("MyCloud");
+            primaryStage.setScene(new Scene(root, 400, 300));
+            primaryStage.setResizable(false);
             primaryStage.show();
         };
         refreshPattern(runnable);

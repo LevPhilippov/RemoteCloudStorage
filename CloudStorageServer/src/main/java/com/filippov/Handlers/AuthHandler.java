@@ -1,10 +1,7 @@
 package com.filippov.Handlers;
 
-import com.filippov.AuthData;
+import com.filippov.*;
 import com.filippov.HibernateUtils.Utils;
-import com.filippov.Request;
-import com.filippov.Server;
-import com.filippov.WrappedFile;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -15,7 +12,6 @@ import java.nio.file.Paths;
 
 public class AuthHandler extends ChannelInboundHandlerAdapter {
     private boolean autorizedClient;
-//    private int autorizationCounter;
     private String login;
 
     @Override
@@ -33,25 +29,40 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
         }
         //если это авторизационные данные AuthData
         else {
-            if(msg instanceof AuthData && Utils.checkAuthData((AuthData)msg)) {
-                autorizedClient = true;
-                System.out.println("Клиент авторизован");
-                login = ((AuthData)msg).getLogin();
-                //создание директории пользователя
-                if (!Files.exists(Paths.get(Server.rootPath.toString(), login))) {
-                    Files.createDirectory(Paths.get(Server.rootPath.toString(), login));
+            if(msg instanceof AuthData) {
+                AuthData authData = (AuthData)msg;
+                if(!authData.isNewId()) {
+                    //существующий юзер
+                    if(!Utils.checkAuthData((AuthData)msg)){
+                        //если логин и пароль не верны
+                        System.out.println("Клиент не авторизован! Отправить сообщение пользователю!");
+                        ServiseMessage.sendMessage(ctx.channel(), "Авторизация невозможна! Неверный логин или пароль!");
+                        ReferenceCountUtil.release(msg);
+
+                        return;
+                    }
+                } else {
+                    System.out.println("Попытка создания нового пользователя!");
+                    //новый юзер
+                    if(!Utils.writeNewClientAuthData(authData)) {
+                        //если пользователь с такими данными уже зарегистрирован
+                        System.out.println("Пользователь с таким ником уже существует! Отправить сообщение клиенту!");
+                        ServiseMessage.sendMessage(ctx.channel(), "Пользователь с таким ником уже существует!");
+                        ReferenceCountUtil.release(msg);
+
+                        return;
+                    }
                 }
+                //создание директории пользователя (при регистрации нового пользователя)
+                if (!Files.exists(Paths.get(Server.rootPath.toString(), authData.getLogin()))) {
+                    Files.createDirectory(Paths.get(Server.rootPath.toString(), authData.getLogin()));
+                }
+                //если логин и пароль верны или успешно зарегистрировался новый пользователь
+                autorizedClient = true;
+                System.out.println("Клиент авторизован!");
+                login = ((AuthData)msg).getLogin();
                 ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
             }
-            else {
-                System.out.println("Клиент не авторизован!");
-//                autorizationCounter++;
-            }
-            ReferenceCountUtil.release(msg);
         }
-//
-//        if (autorizationCounter>3) {
-//            ctx.channel().closeFuture().sync(); //как закрыть соединение отсюда???
-//        }
     }
 }

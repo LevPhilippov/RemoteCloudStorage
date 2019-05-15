@@ -34,11 +34,11 @@ public class Network{
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
-    private static Controller controller;
-    private static Thread networkThread;
+//    private static Controller controller;
+    private Thread networkThread;
 
 
-    public void startNetwork(String login, String password) {
+    public void startNetwork(AuthData authData, LogController logController) {
         bossGroup = new NioEventLoopGroup(2);
         bootstrap = new Bootstrap();
         networkThread = new Thread(new Runnable() {
@@ -69,8 +69,9 @@ public class Network{
                             System.out.println("Connnection failed!");
                         } else {
                             System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
+                            LogController.logController.setServiseText("Успешное подключение!");
                             //метод на изменение статуса сети
-                            requestAuth(login, password);
+                            requestAuth(authData, logController);
                         }
 
                     }).sync();
@@ -87,17 +88,18 @@ public class Network{
                 }
             }
         });
-        networkThread.setDaemon(true);
+//        networkThread.setDaemon(true);
         networkThread.start();
     }
 
-    public void requestAuth(String login, String password) {
+    public void requestAuth(AuthData authData, LogController logController) {
         if(networkThread == null) {
             System.out.println("Запускаю сеть!");
-            startNetwork(login, password);
+            LogController.logController.setServiseText("Запускаю сеть!");
+            startNetwork(authData, logController);
         } else if (networkThread.isAlive()) {
             System.out.println("Отправлены авторизационные данные!");
-            AuthData authData = new AuthData(login, password);
+            LogController.logController.setServiseText("Отправлены авторизационные данные!");
             cf.channel().writeAndFlush(authData);
         }
     }
@@ -105,6 +107,7 @@ public class Network{
     public void shutdown() {
         cf.channel().closeFuture();
         bossGroup.shutdownGracefully();
+        networkThread =null;
     }
 
     /**
@@ -154,15 +157,11 @@ public class Network{
         return pathHolder;
     }
 
-    public Controller getController() {
-        return controller;
-    }
-
-    public static void setController(Controller controller) {
-        Network.controller = controller;
-    }
-
-
-
-
+//    public Controller getController() {
+//        return controller;
+//    }
+//
+//    public static void setController(Controller controller) {
+//        Network.controller = controller;
+//    }
 }

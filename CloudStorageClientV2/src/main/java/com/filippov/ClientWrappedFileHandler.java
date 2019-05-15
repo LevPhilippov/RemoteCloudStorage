@@ -65,7 +65,7 @@ public class ClientWrappedFileHandler{
             System.out.println("Не удалось записать файл!");
             e.printStackTrace();
         } finally {
-            Network.getInstance().getController().refreshLocalFilesList();
+            Controller.controller.refreshLocalFilesList();
         }
     }
 
@@ -89,7 +89,7 @@ public class ClientWrappedFileHandler{
         } else {
             System.out.println("Файл уже существует");
         }
-        Network.getInstance().getController().refreshLocalFilesList();
+        Controller.controller.refreshLocalFilesList();
     }
 
     private static Path getlocalPath(WrappedFile wrappedFile) {

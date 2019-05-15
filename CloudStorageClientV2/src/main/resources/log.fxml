@@ -1,17 +1,28 @@
-<?import javafx.scene.layout.VBox?>
-<?import javafx.scene.layout.HBox?>
-<?import javafx.scene.control.ListView?>
+<?xml version="1.0" encoding="UTF-8"?>
+
 <?import javafx.scene.control.Button?>
-<?import javafx.scene.text.Text?>
-<?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.PasswordField?>
 <?import javafx.scene.control.Label?>
-<VBox fx:controller="com.filippov.LogController"
-      xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000">
-    <VBox fx:id="loginScreen" visible="true">
-        <Label text="Пожалуйста авторизуйтесь"/>
-        <TextField fx:id="loginField" promptText="Введите логин"/>
-        <PasswordField fx:id="passwordField" promptText="Введеите пароль"/>
-        <Button fx:id="but" text="Auth" onAction="#tryAuth"/>
-    </VBox>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox fx:id="loginScreen" alignment="center" maxHeight="300" maxWidth="400" visible="true" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8.0.172-ea" fx:controller="com.filippov.LogController">
+    <HBox prefHeight="150">
+    <Label text="Пожалуйста авторизуйтесь или создайте новый аккаунт" textAlignment="CENTER"/>
+    </HBox>
+        <HBox prefWidth="Infinity">
+            <Label text="Login" prefWidth="100" textAlignment="CENTER" HBox.hgrow="ALWAYS"/>
+            <TextField fx:id="loginField"  promptText="Enter login" HBox.hgrow="ALWAYS" />
+        </HBox>
+        <HBox prefWidth="Infinity">
+            <Label text="Password" prefWidth="100" textAlignment="CENTER" HBox.hgrow="ALWAYS" />
+            <PasswordField fx:id="passwordField" promptText="Enter password" HBox.hgrow="ALWAYS" />
+        </HBox>
+        <HBox>
+            <Button fx:id="log" onAction="#tryAuth" text="LogIN" prefWidth="250"/>
+            <Button fx:id="createId" onAction="#tryNewId" text="Create new user" prefWidth="250"/>
+        </HBox>
+        <TextArea fx:id="serviceMessageArea" maxHeight="100" promptText="ServiseMessage" editable="false"/>
 </VBox>

@@ -9,10 +9,12 @@ public class AuthData implements Serializable {
 
     private String login;
     private String password;
+    private boolean newId;
 
-    public AuthData(String login, String password) {
+    public AuthData(String login, String password, boolean newId) {
         this.login = DigestUtils.md5Hex(login);
         this.password = DigestUtils.md5Hex(password);
+        this.newId = newId;
     }
 
     public String getLogin() {
@@ -21,5 +23,9 @@ public class AuthData implements Serializable {
 
     public String getPassword() {
         return password;
+    }
+
+    public boolean isNewId() {
+        return newId;
     }
 }

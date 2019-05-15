@@ -20,6 +20,8 @@ import java.util.ResourceBundle;
 @Getter
 public class Controller implements Initializable {
 
+    public static Controller controller;
+
     Network network;
 
     @FXML
@@ -36,9 +38,10 @@ public class Controller implements Initializable {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        controller = this;
         //network binding
         network = Network.getInstance();
-        network.setController(this);
+//        network.setController(this);
         //listview setting
         localListView.setManaged(true);
         serverListView.setManaged(true);
@@ -47,7 +50,7 @@ public class Controller implements Initializable {
         setListenersOnListView();
         //refresh lists
         refreshLocalFilesList();
-//        network.requestFilesListFromServer();
+        network.requestFilesListFromServer(null);
     }
 
     private void setListenersOnListView() {
@@ -130,13 +133,14 @@ public class Controller implements Initializable {
         network.filesHandler(os, Request.RequestType.SENDFILES);
     }
 
-    public void connect() {
-        Network.setController(this);
-        Network.getInstance().startNetwork("Suka", "Blyat");//заменить
-    }
+//    public void connect() {
+//        Network.setController(this);
+//        Network.getInstance().startNetwork("Suka", "Blyat");//заменить
+//    }
 
     public void disconnest() {
         Platform.runLater(() -> Network.getInstance().shutdown());
+        ClientMain.clientMain.setLogScene();
     }
 
     public void requestFile() {

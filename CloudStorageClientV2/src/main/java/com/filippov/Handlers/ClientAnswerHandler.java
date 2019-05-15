@@ -1,6 +1,7 @@
 package com.filippov.Handlers;
 
 import com.filippov.ClientMain;
+import com.filippov.Controller;
 import com.filippov.Network;
 import com.filippov.Request;
 import io.netty.channel.ChannelHandlerContext;
@@ -18,13 +19,12 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
             switch (request.getAnswerType()) {
                 case FILELIST: {
                     System.out.println("Обновляю список файлов на сервере " + request.getFileList().toString());
-                    Network.getInstance().getController().refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
+                    Controller.controller.refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
                     break;
                 }
                 case AUTH_SUCCESS: {
                     System.out.println("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
-                    Network.getInstance().requestFilesListFromServer(null);
                     break;
                 }
                 default: {
