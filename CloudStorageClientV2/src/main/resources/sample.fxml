@@ -4,18 +4,24 @@
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.text.Text?>
 <?import javafx.scene.control.TextField?>
-<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.Label?>
 <VBox fx:controller="com.filippov.Controller"
-      xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000">
-    <VBox fx:id="mainScreen" visible="true">
-    <Text fx:id="serverConnectionStatus" text="You are ofline"  textAlignment="CENTER"/>
+      xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000" fx:id="mainScreen" visible="true">
     <HBox>
         <VBox HBox.hgrow="ALWAYS">
-            <TextField  fx:id="serverFolder" promptText="ServerPath" disable="true"/>
+            <TextField  fx:id="serverFolder" promptText="Server" disable="true"/>
             <ListView fx:id="serverListView" />
         </VBox>
+        <VBox prefWidth="50">
+            <Label minHeight="30"/>
+            <Button fx:id="syncButton" text="Push" onAction="#push"/>
+            <Button fx:id="getFIlesButton" text="Pull" onAction="#requestFile"/>
+            <Button fx:id="delete" text="Del" onAction="#delete"/>
+            <Button fx:id="disconnectButton" text="Disc" onAction="#disconnest"/>
+            <Button fx:id="CloseApp" text="EXT" onAction="#closeApp"/>
+        </VBox>
         <VBox HBox.hgrow="ALWAYS">
-            <TextField fx:id="clientFolder" promptText="Local Path" disable="true"/>
+            <TextField fx:id="clientFolder" promptText="Local" disable="true"/>
             <ListView fx:id="localListView" />
         </VBox>
     </HBox>
@@ -23,15 +29,4 @@
         <Button fx:id="backServer" text="step back" minWidth="200" prefWidth="400" onAction="#stepBackServerPath"/>
         <Button fx:id="backClient" text="step back" minWidth="200" prefWidth="400" onAction="#stepBackClientPath"/>
     </HBox>
-    <HBox>
-        <Button fx:id="syncButton" text="Push" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#push"/>
-<!--        <Button fx:id="connectButton" text="Connect" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#connect"/>-->
-        <Button fx:id="disconnectButton" text="Disconnect" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#disconnest"/>
-        <Button fx:id="getFIlesButton" text="Pull" HBox.hgrow="ALWAYS" minWidth="200" prefWidth="400" onAction="#requestFile"/>
-    </HBox>
-    <HBox>
-        <Button fx:id="delete" text="Delete" minWidth="100" onAction="#delete"/>
-        <Button fx:id="CloseApp" text="EXIT" minWidth="100" onAction="#closeApp"/>
-    </HBox>
-    </VBox>
 </VBox>
