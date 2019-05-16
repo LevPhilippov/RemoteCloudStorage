@@ -8,9 +8,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 
+<?import javafx.scene.image.ImageView?>
 <VBox fx:id="loginScreen" alignment="center" maxHeight="300" maxWidth="400" visible="true" xmlns:fx="http://javafx.com/fxml/1" xmlns="http://javafx.com/javafx/8.0.172-ea" fx:controller="com.filippov.LogController">
-    <HBox prefHeight="150">
-    <Label text="Пожалуйста авторизуйтесь или создайте новый аккаунт" textAlignment="CENTER"/>
+    <HBox fx:id="cloudBox" alignment="CENTER">
     </HBox>
         <HBox prefWidth="Infinity">
             <Label text="Login" prefWidth="100" textAlignment="CENTER" HBox.hgrow="ALWAYS"/>
@@ -24,5 +24,5 @@
             <Button fx:id="log" onAction="#tryAuth" text="LogIN" prefWidth="250"/>
             <Button fx:id="createId" onAction="#tryNewId" text="Create new user" prefWidth="250"/>
         </HBox>
-        <TextArea fx:id="serviceMessageArea" maxHeight="100" promptText="ServiseMessage" editable="false"/>
+        <TextArea fx:id="serviceMessageArea" editable="false" VBox.vgrow="ALWAYS"/>
 </VBox>

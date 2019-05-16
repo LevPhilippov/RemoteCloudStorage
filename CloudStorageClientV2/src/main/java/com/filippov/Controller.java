@@ -6,7 +6,11 @@ import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.control.*;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.VBox;
 import lombok.Getter;
 
 import java.io.File;
@@ -14,15 +18,35 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
 
 @Getter
-public class Controller implements Initializable {
+public class Controller implements Initializable, MessageService  {
 
     public static Controller controller;
 
     Network network;
+
+    @FXML
+    private VBox topBox;
+    @FXML
+    private TextArea serviceMessageArea;
+    @FXML
+    private Button pushButton;
+    @FXML
+    private Button pullButton;
+    @FXML
+    private Button deleteButton;
+    @FXML
+    private Button closeAppButton;
+    @FXML
+    private Button disconnectButton;
+    @FXML
+    private Button backServerButton;
+    @FXML
+    private Button backClientButton;
 
     @FXML
     private ListView serverListView;
@@ -39,6 +63,7 @@ public class Controller implements Initializable {
     @Override
     public void initialize(URL location, ResourceBundle resources) {
         controller = this;
+        Network.messageService = this;
         //network binding
         network = Network.getInstance();
 //        network.setController(this);
@@ -48,9 +73,42 @@ public class Controller implements Initializable {
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         setListenersOnListView();
+        //icons
+        bindIcons();
         //refresh lists
         refreshLocalFilesList();
         network.requestFilesListFromServer(null);
+    }
+
+    private void bindIcons() {
+        List <ImageView> imageViews = new ArrayList<>();
+        //push
+        imageViews.add(new ImageView(new Image("icons/doubleArrowLeft48.png")));
+        //pull
+        imageViews.add(new ImageView(new Image("icons/doubleArrowRight48.png")));
+        //delete
+        imageViews.add(new ImageView(new Image("icons/recycle100.png")));
+        //disconnect
+        imageViews.add(new ImageView(new Image("icons/disconnect64.png")));
+        //shutdown
+        imageViews.add(new ImageView(new Image("icons/shutdown48.png")));
+        for (ImageView imageView : imageViews) {
+            imageView.setFitHeight(30);
+            imageView.setFitWidth(30);
+        }
+        pushButton.setGraphic(imageViews.get(0));
+        pullButton.setGraphic(imageViews.get(1));
+        deleteButton.setGraphic(imageViews.get(2));
+        disconnectButton.setGraphic(imageViews.get(3));
+        closeAppButton.setGraphic(imageViews.get(4));
+
+        ImageView backImage = new ImageView(new Image("icons/back16.png"));
+        ImageView backImage2 = new ImageView(new Image("icons/back16.png"));
+        backServerButton.setGraphic(backImage2);
+        backClientButton.setGraphic(backImage);
+        ImageView logo = new ImageView(new Image("icons/MyCloud64.png"));
+        topBox.getChildren().add(logo);
+
     }
 
     private void setListenersOnListView() {
@@ -175,7 +233,7 @@ public class Controller implements Initializable {
         }
     }
 
-    public void delete() {
+    public void deleteButton() {
             ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
             if(!observableList.isEmpty()) {
                 System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
@@ -194,5 +252,10 @@ public class Controller implements Initializable {
     public void closeApp() {
         Platform.runLater(() -> Network.getInstance().shutdown());
         Platform.exit();
+    }
+
+    @Override
+    public void setServiseMessage(String message) {
+        serviceMessageArea.appendText(message + "\n");
     }
 }

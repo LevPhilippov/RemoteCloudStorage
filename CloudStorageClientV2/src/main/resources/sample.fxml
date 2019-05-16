@@ -5,28 +5,29 @@
 <?import javafx.scene.text.Text?>
 <?import javafx.scene.control.TextField?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
 <VBox fx:controller="com.filippov.Controller"
       xmlns:fx="http://javafx.com/fxml" alignment="center" maxWidth="1000" maxHeight="1000" fx:id="mainScreen" visible="true">
-    <HBox>
+    <VBox fx:id="topBox" alignment="CENTER"/>
+    <HBox alignment="CENTER">
         <VBox HBox.hgrow="ALWAYS">
             <TextField  fx:id="serverFolder" promptText="Server" disable="true"/>
             <ListView fx:id="serverListView" />
+            <Button fx:id="backServerButton" prefWidth="475" alignment="CENTER" onAction="#stepBackServerPath"/>
         </VBox>
         <VBox prefWidth="50">
             <Label minHeight="30"/>
-            <Button fx:id="syncButton" text="Push" onAction="#push"/>
-            <Button fx:id="getFIlesButton" text="Pull" onAction="#requestFile"/>
-            <Button fx:id="delete" text="Del" onAction="#delete"/>
-            <Button fx:id="disconnectButton" text="Disc" onAction="#disconnest"/>
-            <Button fx:id="CloseApp" text="EXT" onAction="#closeApp"/>
+            <Button fx:id="pushButton" onAction="#push"/>
+            <Button fx:id="pullButton" onAction="#requestFile"/>
+            <Button fx:id="deleteButton" onAction="#deleteButton"/>
+            <Button fx:id="disconnectButton" onAction="#disconnest"/>
+            <Button fx:id="closeAppButton"  onAction="#closeApp"/>
         </VBox>
         <VBox HBox.hgrow="ALWAYS">
             <TextField fx:id="clientFolder" promptText="Local" disable="true"/>
             <ListView fx:id="localListView" />
+            <Button fx:id="backClientButton" prefWidth="475" alignment="CENTER" onAction="#stepBackClientPath"/>
         </VBox>
     </HBox>
-    <HBox>
-        <Button fx:id="backServer" text="step back" minWidth="200" prefWidth="400" onAction="#stepBackServerPath"/>
-        <Button fx:id="backClient" text="step back" minWidth="200" prefWidth="400" onAction="#stepBackClientPath"/>
-    </HBox>
+    <TextArea fx:id="serviceMessageArea" editable="false" VBox.vgrow="ALWAYS"/>
 </VBox>

@@ -2,10 +2,12 @@ package com.filippov;
 
 import javafx.application.Application;
 import javafx.application.Platform;
+import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
+import javafx.stage.WindowEvent;
 
 import java.io.IOException;
 
@@ -31,10 +33,17 @@ public class ClientMain extends Application {
             }
             primaryStage.setTitle("MyCloud");
             primaryStage.setScene(new Scene(root, 800, 600));
+            primaryStage.setResizable(false);
+            primaryStage.setOnCloseRequest(event -> {
+                if(Network.getInstance()!= null) {
+                    Network.getInstance().shutdown();
+                }
+            });
             primaryStage.show();
         };
         refreshPattern(runnable);
     }
+
     public void setLogScene(){
         Runnable runnable = () -> {
             try {
@@ -45,6 +54,12 @@ public class ClientMain extends Application {
             primaryStage.setTitle("MyCloud");
             primaryStage.setScene(new Scene(root, 400, 300));
             primaryStage.setResizable(false);
+            primaryStage.setOnCloseRequest(event -> {
+                if(Network.getInstance()!= null) {
+                    Network.getInstance().shutdown();
+                }
+            });
+
             primaryStage.show();
         };
         refreshPattern(runnable);

@@ -95,6 +95,7 @@ public class ServerRequestHandler{
             );
             return;
         }
+            ServiseMessage.sendMessage(ctx.channel(), "Запрошенная директория является файлом!");
             System.out.println("Запрошенная директория является файлом! Здесь могла быть ваша реклама!");
     }
 

@@ -5,17 +5,25 @@ import javafx.fxml.Initializable;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextArea;
 import javafx.scene.control.TextField;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
+import javafx.scene.layout.HBox;
 
 import java.net.URL;
 import java.util.ResourceBundle;
 
-public class LogController {
-
-    public static LogController logController;
+public class LogController implements Initializable, MessageService {
 
     public LogController() {
         this.logController=this;
+        Network.messageService = this;
     }
+
+    public static LogController logController;
+
+    @FXML
+    private HBox cloudBox;
+
     @FXML
     private TextArea serviceMessageArea;
 
@@ -51,7 +59,14 @@ public class LogController {
         return passwordField;
     }
 
-    public void setServiseText(String message) {
+    @Override
+    public void initialize(URL location, ResourceBundle resources) {
+        ImageView cloud = new ImageView(new Image("icons/MyCloud64.png"));
+        cloudBox.getChildren().add(cloud);
+    }
+
+    @Override
+    public void setServiseMessage(String message) {
         serviceMessageArea.appendText(message + "\n");
     }
 }

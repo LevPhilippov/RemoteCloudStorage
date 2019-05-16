@@ -12,7 +12,7 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
         try {
             if(msg instanceof ServiseMessage) {
                 System.out.println("Получено сервисное сообщение!");
-                LogController.logController.setServiseText(((ServiseMessage)msg).getMessage());
+                Network.messageService.setServiseMessage(((ServiseMessage)msg).getMessage());
             }
             else if (msg instanceof Request) {
                 Request request = (Request) msg;

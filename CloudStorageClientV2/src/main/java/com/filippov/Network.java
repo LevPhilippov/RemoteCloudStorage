@@ -34,7 +34,7 @@ public class Network{
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
-//    private static Controller controller;
+    public static MessageService messageService;
     private Thread networkThread;
 
 
@@ -69,7 +69,7 @@ public class Network{
                             System.out.println("Connnection failed!");
                         } else {
                             System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
-                            LogController.logController.setServiseText("Успешное подключение!");
+                            messageService.setServiseMessage("Успешное подключение!");
                             //метод на изменение статуса сети
                             requestAuth(authData, logController);
                         }
@@ -95,11 +95,11 @@ public class Network{
     public void requestAuth(AuthData authData, LogController logController) {
         if(networkThread == null) {
             System.out.println("Запускаю сеть!");
-            LogController.logController.setServiseText("Запускаю сеть!");
+            messageService.setServiseMessage("Запускаю сеть!");
             startNetwork(authData, logController);
         } else if (networkThread.isAlive()) {
             System.out.println("Отправлены авторизационные данные!");
-            LogController.logController.setServiseText("Отправлены авторизационные данные!");
+            messageService.setServiseMessage("Отправлены авторизационные данные!");
             cf.channel().writeAndFlush(authData);
         }
     }
