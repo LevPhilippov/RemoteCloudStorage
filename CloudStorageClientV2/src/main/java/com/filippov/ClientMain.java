@@ -35,7 +35,7 @@ public class ClientMain extends Application {
             primaryStage.setScene(new Scene(root, 800, 600));
             primaryStage.setResizable(false);
             primaryStage.setOnCloseRequest(event -> {
-                if(Network.getInstance()!= null) {
+                if(Network.getInstance().networkIsActive()) {
                     Network.getInstance().shutdown();
                 }
             });
@@ -55,7 +55,7 @@ public class ClientMain extends Application {
             primaryStage.setScene(new Scene(root, 400, 300));
             primaryStage.setResizable(false);
             primaryStage.setOnCloseRequest(event -> {
-                if(Network.getInstance()!= null) {
+                if(Network.getInstance().networkIsActive()) {
                     Network.getInstance().shutdown();
                 }
             });

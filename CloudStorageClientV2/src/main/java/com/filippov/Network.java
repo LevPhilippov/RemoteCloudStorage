@@ -92,12 +92,16 @@ public class Network{
         networkThread.start();
     }
 
+    public boolean networkIsActive() {
+        return networkThread != null && networkThread.isAlive();
+    }
+
     public void requestAuth(AuthData authData, LogController logController) {
         if(networkThread == null) {
             System.out.println("Запускаю сеть!");
             messageService.setServiseMessage("Запускаю сеть!");
             startNetwork(authData, logController);
-        } else if (networkThread.isAlive()) {
+        } else if (networkIsActive()) {
             System.out.println("Отправлены авторизационные данные!");
             messageService.setServiseMessage("Отправлены авторизационные данные!");
             cf.channel().writeAndFlush(authData);
