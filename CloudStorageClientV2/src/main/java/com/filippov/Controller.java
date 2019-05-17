@@ -28,37 +28,16 @@ public class Controller implements Initializable, MessageService  {
     public static Controller controller;
 
     Network network;
-
     @FXML
     private VBox topBox;
     @FXML
     private TextArea serviceMessageArea;
     @FXML
-    private Button pushButton;
+    private Button pushButton, pullButton, deleteButton, closeAppButton, disconnectButton, backServerButton, backClientButton;
     @FXML
-    private Button pullButton;
+    private ListView serverListView, localListView;
     @FXML
-    private Button deleteButton;
-    @FXML
-    private Button closeAppButton;
-    @FXML
-    private Button disconnectButton;
-    @FXML
-    private Button backServerButton;
-    @FXML
-    private Button backClientButton;
-
-    @FXML
-    private ListView serverListView;
-
-    @FXML
-    private ListView localListView;
-
-    @FXML
-    private TextField serverFolder;
-
-    @FXML
-    private TextField clientFolder;
+    private TextField serverFolder, clientFolder;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -66,90 +45,18 @@ public class Controller implements Initializable, MessageService  {
         Network.messageService = this;
         //network binding
         network = Network.getInstance();
-//        network.setController(this);
         //listview setting
         localListView.setManaged(true);
         serverListView.setManaged(true);
         localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        setListenersOnListView();
-        //icons
-        bindIcons();
+        //icons and images and binding listeners
+        CreateControllerGUI.setListenersOnListView(localListView,serverListView);
+        CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton);
         //refresh lists
         refreshLocalFilesList();
         network.requestFilesListFromServer(null);
     }
-
-    private void bindIcons() {
-        List <ImageView> imageViews = new ArrayList<>();
-        //push
-        imageViews.add(new ImageView(new Image("icons/doubleArrowLeft48.png")));
-        //pull
-        imageViews.add(new ImageView(new Image("icons/doubleArrowRight48.png")));
-        //delete
-        imageViews.add(new ImageView(new Image("icons/recycle100.png")));
-        //disconnect
-        imageViews.add(new ImageView(new Image("icons/disconnect64.png")));
-        //shutdown
-        imageViews.add(new ImageView(new Image("icons/shutdown48.png")));
-        for (ImageView imageView : imageViews) {
-            imageView.setFitHeight(30);
-            imageView.setFitWidth(30);
-        }
-        pushButton.setGraphic(imageViews.get(0));
-        pullButton.setGraphic(imageViews.get(1));
-        deleteButton.setGraphic(imageViews.get(2));
-        disconnectButton.setGraphic(imageViews.get(3));
-        closeAppButton.setGraphic(imageViews.get(4));
-
-        ImageView backImage = new ImageView(new Image("icons/back16.png"));
-        ImageView backImage2 = new ImageView(new Image("icons/back16.png"));
-        backServerButton.setGraphic(backImage2);
-        backClientButton.setGraphic(backImage);
-        ImageView logo = new ImageView(new Image("icons/MyCloud64.png"));
-        topBox.getChildren().add(logo);
-
-    }
-
-    private void setListenersOnListView() {
-        localListView.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent event) {
-                if(event.getClickCount()==1) {
-                    serverListView.getSelectionModel().clearSelection();
-                }
-                if(event.getClickCount()==2) {
-                    Path path = Paths.get(PathHolder.baseLocalPath.toString(), network.getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
-                    System.out.println(path.toString());
-                    if(Files.isDirectory(path)) {
-                        System.out.println("-----------------------------");
-                        System.out.println("Новый путь к директории клиента: " + path.toString());
-                        System.out.println("-----------------------------");
-                        network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
-                        refreshLocalFilesList();
-                        return;
-                    }
-                    System.out.println("Выбранный файл не является директорией!");
-                }
-            }
-        });
-
-        serverListView.setOnMouseClicked(new EventHandler<MouseEvent>() {
-            @Override
-            public void handle(MouseEvent event) {
-                if(event.getClickCount()==1) {
-                    localListView.getSelectionModel().clearSelection();
-                }
-                if(event.getClickCount()==2) {
-                    Path path = Paths.get(network.getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
-//                    network.getPathHolder().setTargetPath(path);
-                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
-                    Network.getInstance().requestFilesListFromServer(path);
-                }
-            }
-        });
-    }
-
 
     public void refreshLocalFilesList(){
         Runnable refresh = () -> {
@@ -190,11 +97,6 @@ public class Controller implements Initializable, MessageService  {
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
         network.filesHandler(os, Request.RequestType.SENDFILES);
     }
-
-//    public void connect() {
-//        Network.setController(this);
-//        Network.getInstance().startNetwork("Suka", "Blyat");//заменить
-//    }
 
     public void disconnest() {
         Platform.runLater(() -> Network.getInstance().shutdown());
@@ -250,7 +152,10 @@ public class Controller implements Initializable, MessageService  {
     }
 
     public void closeApp() {
-        Platform.runLater(() -> Network.getInstance().shutdown());
+        Platform.runLater(() -> {
+            if (network.networkIsActive())
+                Network.getInstance().shutdown();
+        });
         Platform.exit();
     }
 

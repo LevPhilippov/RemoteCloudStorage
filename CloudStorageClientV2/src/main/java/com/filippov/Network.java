@@ -1,6 +1,7 @@
 package com.filippov;
 
 import com.filippov.Handlers.ClientAnswerHandler;
+import com.filippov.Handlers.ClientHandlersInitializer;
 import com.filippov.Handlers.ObjectInboundHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
@@ -45,50 +46,33 @@ public class Network{
             @Override
             public void run(){
                 try {
-                    // Configure SSL.
-                    final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
-                    //SSL
-
-                    bootstrap.group(bossGroup).channel(NioSocketChannel.class).handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel socketChannel) throws Exception {
-                            socketChannel.pipeline().addLast(
-                                    sslCtx.newHandler(socketChannel.alloc(), HOST, PEER_PORT),
-                                    new LoggingHandler("EndLogger", LogLevel.INFO),
-                                    new ObjectDecoder(ClientWrappedFileHandler.byteBufferSize+1024*1024,ClassResolvers.cacheDisabled(null)),
-                                    new ObjectEncoder(),
-                                    new ObjectInboundHandler(),
-                                    new ClientAnswerHandler()
-                            );
-                        }
-                    }).option(ChannelOption.SO_KEEPALIVE, true);
+                    bootstrap.group(bossGroup)
+                            .channel(NioSocketChannel.class)
+                            .handler(new ClientHandlersInitializer())
+                            .option(ChannelOption.SO_KEEPALIVE, true);
 
                     cf = bootstrap.connect("127.0.0.1", 8189);
                     cf.addListener((ChannelFutureListener) channelFuture -> {
                         if(!channelFuture.isSuccess()) {
                             System.out.println("Connnection failed!");
                         } else {
-                            System.out.println("Connection success! \n + Тайм-аут соединения" + sslCtx.sessionTimeout() + " секунд." );
                             messageService.setServiseMessage("Успешное подключение!");
                             //метод на изменение статуса сети
                             requestAuth(authData, logController);
                         }
 
                     }).sync();
+
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
                     System.out.println("Thread interruption exeption!");
                     e.printStackTrace();
-                } catch (SSLException o) {
-                    System.out.println("SSL Exception!");
-                    o.printStackTrace();
                 }
                 finally {
                     shutdown();
                 }
             }
         });
-//        networkThread.setDaemon(true);
         networkThread.start();
     }
 
@@ -144,6 +128,7 @@ public class Network{
             request.setServerPath(path.toFile());
         }
         System.out.println("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
+        messageService.setServiseMessage("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
         cf.channel().writeAndFlush(request);
     }
 
@@ -152,6 +137,7 @@ public class Network{
         os.stream().map(key -> pathHolder.getServerPathMap().get(key).toFile()).forEach(filesList::add);
 
         System.out.println("Запрос файлов из облака " + filesList);
+        messageService.setServiseMessage("Запрос файлов из облака " + filesList);
         cf.channel().writeAndFlush(new Request()
                 .setRequestType(requestType)
                 .setFileList(filesList));
@@ -160,12 +146,4 @@ public class Network{
     public PathHolder getPathHolder() {
         return pathHolder;
     }
-
-//    public Controller getController() {
-//        return controller;
-//    }
-//
-//    public static void setController(Controller controller) {
-//        Network.controller = controller;
-//    }
 }

@@ -19,10 +19,12 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
             switch (request.getAnswerType()) {
                 case FILELIST: {
                     System.out.println("Обновляю список файлов на сервере " + request.getFileList().toString());
+                    Network.messageService.setServiseMessage("Обновляю список файлов на сервере!");
                     Controller.controller.refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
                     break;
                 }
                 case AUTH_SUCCESS: {
+                    Network.messageService.setServiseMessage("Авторизация успешна!");
                     System.out.println("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
                     break;

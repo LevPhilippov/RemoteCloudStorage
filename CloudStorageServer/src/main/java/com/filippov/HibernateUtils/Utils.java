@@ -1,6 +1,7 @@
 package com.filippov.HibernateUtils;
 
 import com.filippov.AuthData;
+import com.filippov.Factory;
 import com.filippov.Request;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
@@ -69,17 +70,18 @@ public class Utils {
         AuthDataEntity authDataEntity = getLoginID(session,login);
 
         if (!isFileAlreadyExist(session, authDataEntity, pathNameHash)) {
+            Transaction tx = session.beginTransaction();
             ///
             FilesEntity filesEntity = new FilesEntity();
+            filesEntity.setId(authDataEntity.getId());
             filesEntity.setPath(path);
             filesEntity.setFileName(fileName);
             filesEntity.setPathNameHash(pathNameHash);
             filesEntity.setAuthdataById(authDataEntity);
             filesEntity.setChildren(children);
             ///
-            session.beginTransaction();
             session.save(filesEntity);
-            session.getTransaction().commit();
+            tx.commit();
         } else {
             System.out.println("Запись уже существует!");
         }
@@ -93,9 +95,9 @@ public class Utils {
         System.out.println("Login is: " + authDataEntity.getLogin());
         Transaction tx = session.beginTransaction();
         System.out.println("Удаляю файл: " + file);
-        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND pathNameHash =: paramName2");
-        query.setParameter("paramName1", authDataEntity);
-        query.setParameter("paramName2", DigestUtils.md5Hex(file.getParent() + file.getName()));
+        Query query =  session.createQuery("DELETE FilesEntity WHERE id =:paramName1 AND pathNameHash =: paramName2");
+        query.setParameter("paramName1", authDataEntity.getId());
+        query.setParameter("paramName2", Factory.MD5PathNameHash(file.getParent(), file.getName()));
         System.out.println("Операция выполнено: " + query.executeUpdate());
         tx.commit();
         session.close();
@@ -121,18 +123,18 @@ public class Utils {
     private static List<FilesEntity> filesEntityList (String login, File path) {
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session, login);
-        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
+        Query query = session.createQuery("FROM FilesEntity WHERE id =:paramName1 AND path =:paramName2");
         System.out.println(path.getPath());
         query.setParameter("paramName2", path.getPath());
-        query.setParameter("paramName1", authDataEntity);
+        query.setParameter("paramName1", authDataEntity.getId());
         List list = query.list();
         session.close();
         return list;
     }
 
     private static boolean isFileAlreadyExist(Session session, AuthDataEntity authDataEntity, String pathNameHash) {
-        Query query = session.createQuery("from FilesEntity where authdataById =:paramName1 AND pathNameHash =:paramName2");
-        query.setParameter("paramName1", authDataEntity);
+        Query query = session.createQuery("from FilesEntity where id =:paramName1 AND pathNameHash =:paramName2");
+        query.setParameter("paramName1", authDataEntity.getId());
         query.setParameter("paramName2", pathNameHash);
         return !query.list().isEmpty();
     }
@@ -140,10 +142,10 @@ public class Utils {
     private static FilesEntity isRecordExist(String login, File path) {
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session, login);
-        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path_name_hash =:paramName2");
-        query.setParameter("paramName1", authDataEntity);
+        Query query = session.createQuery("FROM FilesEntity WHERE id =:paramName1 AND path_name_hash =:paramName2");
+        query.setParameter("paramName1", authDataEntity.getId());
         System.out.println(path);
-        query.setParameter("paramName2", DigestUtils.md5Hex(path.getParent()+ path.getName()));
+        query.setParameter("paramName2", Factory.MD5PathNameHash(path.getParent(), path.getName()));
         List <FilesEntity> list = query.list();
         if (list.size()==1) {
             return list.get(0);

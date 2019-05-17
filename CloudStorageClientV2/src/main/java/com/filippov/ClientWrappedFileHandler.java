@@ -16,7 +16,6 @@ public class ClientWrappedFileHandler{
 
     public static int byteBufferSize = 1024*1024*5;
 
-
     public static void parseToSave(WrappedFile wrappedFile) {
         switch (wrappedFile.getTypeEnum()) {
             case FILE: saveFile(wrappedFile); break;
@@ -62,6 +61,7 @@ public class ClientWrappedFileHandler{
             //если ни то ни другое
             Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
         } catch (IOException e) {
+            Network.messageService.setServiseMessage("Не удалось записать файл!");
             System.out.println("Не удалось записать файл!");
             e.printStackTrace();
         } finally {
@@ -84,10 +84,20 @@ public class ClientWrappedFileHandler{
                 Files.write(targetPath,wrappedFile.getBytes());
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
+                Network.messageService.setServiseMessage("Не удалось записать файл!");
                 e.printStackTrace();
             }
         } else {
-            System.out.println("Файл уже существует");
+            try {
+                Network.messageService.setServiseMessage("Файл c таким именем уже существует! Выполняется перезапись!");
+                System.out.println("Файл уже существует! Перезаписываю!");
+                Files.delete(targetPath);
+                Files.createFile(targetPath);
+                Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+            } catch (IOException e) {
+                e.printStackTrace();
+                Network.messageService.setServiseMessage("Ошибка! Не удалось записать файл!");
+            }
         }
         Controller.controller.refreshLocalFilesList();
     }
@@ -116,13 +126,12 @@ public class ClientWrappedFileHandler{
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
                     localPath.getFileName().toString(),serverPath.toFile());
-//            if (serverPath!=null)
-//                wrappedFile.setTargetPath(serverPath.toFile());
             System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 System.out.println("Writing Complete!");
             });
         } catch (IOException a) {
+            Network.messageService.setServiseMessage("Не удалось выполнить запись файла в канал!");
             System.out.println("Ошибка записи");
             a.printStackTrace();
         }
@@ -166,11 +175,10 @@ public class ClientWrappedFileHandler{
                 }
             } catch (IOException e) {
                 e.printStackTrace();
+                Network.messageService.setServiseMessage("Не удалось выполнить запись файла в канал!");
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
     }
-
-
 }

@@ -138,7 +138,8 @@ public class ServerWrappedFileHandler {
     }
 
     private static void saveFile(WrappedFile wrappedFile) {
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+//        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+        String hash_file_name = Factory.MD5PathNameHash(wrappedFile.getTargetPath().getPath(),wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
         System.out.println("Файл будет записан по адресу: " + path.toString());
         try {
@@ -157,7 +158,7 @@ public class ServerWrappedFileHandler {
 
     private static void saveChunk(WrappedFile wrappedFile) {
         System.out.println("Запись чанка № " + wrappedFile.getChunkNumber() + " из " + wrappedFile.getChunkslsInFile());
-        String hash_file_name = DigestUtils.md5Hex(wrappedFile.getTargetPath().getPath() + wrappedFile.getFileName());
+        String hash_file_name = Factory.MD5PathNameHash(wrappedFile.getTargetPath().getPath(),wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
 //                если файла по этому адресу еще не существует

@@ -25,8 +25,6 @@ public class PathHolder {
     }
 
     public void setClientPath(Path clientPath) {
-//        if(clientPath==null)
-//            this.clientPath = Paths.get("");
         this.clientPath = clientPath;
     }
 

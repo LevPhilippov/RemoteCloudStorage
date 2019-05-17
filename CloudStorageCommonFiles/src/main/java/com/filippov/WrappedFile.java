@@ -31,7 +31,7 @@ public class WrappedFile implements Serializable {
         this.fileName = fileName;
         this.targetPath = targetPath;
     }
-
+//builders
     public WrappedFile setTypeEnum(TypeEnum typeEnum){
         this.typeEnum = typeEnum;
         return this;

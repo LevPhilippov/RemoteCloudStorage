@@ -32,7 +32,8 @@ public class ServerRequestHandler{
             case CREATE_FOLDER: {
                 String folderName = request.getServerPath().getName();
                 String serverPath = request.getServerPath().getParent();
-                String pathNameHash = DigestUtils.md5Hex(serverPath + folderName);
+//                String pathNameHash = DigestUtils.md5Hex(serverPath + folderName);
+                String pathNameHash = Factory.MD5PathNameHash(serverPath, folderName);
                 Utils.createFileRecord(request.getLogin(),
                         request.getServerPath().getParent(),
                         request.getServerPath().getName(),
