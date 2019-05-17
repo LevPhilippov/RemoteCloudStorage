@@ -1,9 +1,6 @@
 package com.filippov.Handlers;
 
-import com.filippov.ClientMain;
-import com.filippov.Controller;
-import com.filippov.Network;
-import com.filippov.Request;
+import com.filippov.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
@@ -27,6 +24,13 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
                     Network.messageService.setServiseMessage("Авторизация успешна!");
                     System.out.println("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
+                    break;
+                }
+                case PROPERTY: {
+                    Runnable runnable = () -> {
+                        CreateControllerGUI.showFileProperty(request.getFileProperty());
+                    };
+                    Controller.refreshPattern(runnable);
                     break;
                 }
                 default: {

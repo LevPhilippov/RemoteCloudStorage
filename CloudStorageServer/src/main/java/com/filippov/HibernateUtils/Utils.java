@@ -2,14 +2,11 @@ package com.filippov.HibernateUtils;
 
 import com.filippov.AuthData;
 import com.filippov.Factory;
-import com.filippov.Request;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
 
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -109,7 +106,7 @@ public class Utils {
         if(file.getName().equals("root")) {
             return true;
         }
-        FilesEntity filesEntity = isRecordExist(login, file);
+        FilesEntity filesEntity = getFileRecord(login, file);
         return filesEntity.getChildren()!=null;
     }
 
@@ -139,7 +136,7 @@ public class Utils {
         return !query.list().isEmpty();
     }
 
-    private static FilesEntity isRecordExist(String login, File path) {
+    public static FilesEntity getFileRecord(String login, File path) {
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session, login);
         Query query = session.createQuery("FROM FilesEntity WHERE id =:paramName1 AND path_name_hash =:paramName2");
@@ -154,8 +151,10 @@ public class Utils {
     }
 
     public static Path getRecordedPath(String login, File path) {
-        FilesEntity filesEntity = isRecordExist(login, path);
+        FilesEntity filesEntity = getFileRecord(login, path);
         return Paths.get(login, filesEntity.getPathNameHash());
     }
+
+
 
 }

@@ -142,6 +142,11 @@ public class Network{
                 .setRequestType(requestType)
                 .setFileList(filesList));
     }
+    public void sendPropertyRequest(String key) {
+        File file = pathHolder.getServerPathMap().get(key).toFile();
+        cf.channel().writeAndFlush(new Request()
+                .setRequestType(Request.RequestType.PROPERTY).setServerPath(file));
+    }
 
     public PathHolder getPathHolder() {
         return pathHolder;

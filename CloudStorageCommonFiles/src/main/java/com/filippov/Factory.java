@@ -31,4 +31,6 @@ public class Factory {
     public static String MD5PathNameHash (String filePath, String fileName) {
         return DigestUtils.md5Hex(filePath+fileName);
     }
+
+
 }

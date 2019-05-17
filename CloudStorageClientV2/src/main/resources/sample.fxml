@@ -20,6 +20,7 @@
             <Button fx:id="pushButton" onAction="#push"/>
             <Button fx:id="pullButton" onAction="#requestFile"/>
             <Button fx:id="deleteButton" onAction="#deleteButton"/>
+            <Button fx:id="propertyButton" onAction="#getFileProperty"/>
             <Button fx:id="disconnectButton" onAction="#disconnest"/>
             <Button fx:id="closeAppButton"  onAction="#closeApp"/>
         </VBox>

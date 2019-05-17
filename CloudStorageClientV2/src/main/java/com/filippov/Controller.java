@@ -2,6 +2,7 @@ package com.filippov;
 
 import javafx.application.Platform;
 import javafx.collections.ObservableList;
+import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
@@ -33,7 +34,7 @@ public class Controller implements Initializable, MessageService  {
     @FXML
     private TextArea serviceMessageArea;
     @FXML
-    private Button pushButton, pullButton, deleteButton, closeAppButton, disconnectButton, backServerButton, backClientButton;
+    private Button pushButton, pullButton, deleteButton, closeAppButton, disconnectButton, backServerButton, backClientButton, propertyButton;
     @FXML
     private ListView serverListView, localListView;
     @FXML
@@ -52,7 +53,7 @@ public class Controller implements Initializable, MessageService  {
         serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
         //icons and images and binding listeners
         CreateControllerGUI.setListenersOnListView(localListView,serverListView);
-        CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton);
+        CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton);
         //refresh lists
         refreshLocalFilesList();
         network.requestFilesListFromServer(null);
@@ -127,7 +128,7 @@ public class Controller implements Initializable, MessageService  {
     }
 
 
-    private static void refreshPattern(Runnable refresh) {
+    public static void refreshPattern(Runnable refresh) {
         if (Platform.isFxApplicationThread()) {
             refresh.run();
         } else {
@@ -162,5 +163,21 @@ public class Controller implements Initializable, MessageService  {
     @Override
     public void setServiseMessage(String message) {
         serviceMessageArea.appendText(message + "\n");
+    }
+
+    public void getFileProperty(ActionEvent actionEvent) {
+        String key = (String) localListView.getSelectionModel().getSelectedItem();
+        if(key != null) {
+            System.out.println("Запрос свойств файла клиента " + key);
+            Path path = network.getPathHolder().getClientPathMap().get(key);
+            CreateControllerGUI.showFileProperty(new FileProperties(path.getFileName().toString(), path.getParent().toString(), path));
+        }
+
+        key = (String) serverListView.getSelectionModel().getSelectedItem();
+        if (key != null) {
+            System.out.println("Запрос свойств файла сервера " + key);
+            network.sendPropertyRequest(key);
+        }
+
     }
 }

@@ -1,7 +1,9 @@
 package com.filippov;
 
 import javafx.event.EventHandler;
+import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
 import javafx.scene.control.ListView;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -13,10 +15,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class CreateControllerGUI {
 
-    private static Button pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton;
+    private static Button pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton;
 
     /**
      * Порядок: pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton
@@ -29,6 +32,8 @@ public class CreateControllerGUI {
         closeAppButton = buttons[4];
         backServerButton = buttons[5];
         backClientButton = buttons[6];
+        propertyButton = buttons[7];
+
 
         List<ImageView> imageViews = new ArrayList<>();
         //push
@@ -41,6 +46,8 @@ public class CreateControllerGUI {
         imageViews.add(new ImageView(new Image("icons/disconnect64.png")));
         //shutdown
         imageViews.add(new ImageView(new Image("icons/shutdown48.png")));
+        //property
+        imageViews.add(new ImageView(new Image("icons/property64.png")));
         for (ImageView imageView : imageViews) {
             imageView.setFitHeight(30);
             imageView.setFitWidth(30);
@@ -50,6 +57,7 @@ public class CreateControllerGUI {
         deleteButton.setGraphic(imageViews.get(2));
         disconnectButton.setGraphic(imageViews.get(3));
         closeAppButton.setGraphic(imageViews.get(4));
+        propertyButton.setGraphic(imageViews.get(5));
 
         ImageView backImage = new ImageView(new Image("icons/back16.png"));
         ImageView backImage2 = new ImageView(new Image("icons/back16.png"));
@@ -103,5 +111,21 @@ public class CreateControllerGUI {
                 }
             }
         });
+    }
+
+    public static void showFileProperty(FileProperties fileProperties) {
+        // Создаем Alert, указываем текст и кнопки, которые на нем должны быть
+        String contentText = String.format("File name: %s\nPath: %s\nSize: %s\nLast Modificated at: %s\n",
+                fileProperties.getFileName(),
+                fileProperties.getFilePath(),
+                fileProperties.getSize(),
+                fileProperties.getLastModificationTime());
+
+        Alert alert = new Alert(Alert.AlertType.INFORMATION, contentText, ButtonType.OK);
+        // showAndWait() показывает Alert и блокирует остальное приложение пока мы не закроем Alert
+        Optional<ButtonType> result = alert.showAndWait();
+        if (result.get().getText().equals("OK")) {
+        } else if (result.get().getText().equals("Cancel")) {
+        }
     }
 }

@@ -1,5 +1,7 @@
 package com.filippov;
 
+import com.filippov.HibernateUtils.AuthDataEntity;
+import com.filippov.HibernateUtils.FilesEntity;
 import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.ChannelHandlerContext;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -32,13 +34,18 @@ public class ServerRequestHandler{
             case CREATE_FOLDER: {
                 String folderName = request.getServerPath().getName();
                 String serverPath = request.getServerPath().getParent();
-//                String pathNameHash = DigestUtils.md5Hex(serverPath + folderName);
                 String pathNameHash = Factory.MD5PathNameHash(serverPath, folderName);
                 Utils.createFileRecord(request.getLogin(),
                         request.getServerPath().getParent(),
                         request.getServerPath().getName(),
                         pathNameHash,
                         request.getServerPath().getPath());
+                break;
+            }
+            case PROPERTY: {
+                System.out.println("Запрос на свойства файла.");
+                sendProperty(request, ctx);
+                break;
             }
             default:
                 System.out.println("Неизвестный тип Request");
@@ -98,6 +105,17 @@ public class ServerRequestHandler{
         }
             ServiseMessage.sendMessage(ctx.channel(), "Запрошенная директория является файлом!");
             System.out.println("Запрошенная директория является файлом! Здесь могла быть ваша реклама!");
+    }
+
+    private static void sendProperty(Request request, ChannelHandlerContext ctx) {
+        Path path = Utils.getRecordedPath(request.getLogin(), request.getServerPath());
+        FilesEntity filesEntity = Utils.getFileRecord(request.getLogin(), request.getServerPath());
+        FileProperties fileProperty = new FileProperties(filesEntity.getFileName()
+                , filesEntity.getPath()
+                , Paths.get(Server.rootPath.toString(), path.toString()));
+        ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER)
+                .setAnswerType(Request.RequestType.PROPERTY)
+                .setFileProperty(fileProperty));
     }
 
 }
