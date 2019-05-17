@@ -5,12 +5,25 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "files", schema = "cloudstoragedb", catalog = "")
+@IdClass(FilesEntityPK.class)
+
 public class FilesEntity {
+    private int id;
     private String pathNameHash;
     private String fileName;
     private String path;
     private String children;
     private AuthDataEntity authdataById;
+
+    @Id
+    @Column(name = "id", nullable = false)
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
 
     @Id
     @Column(name = "path_name_hash", nullable = false, length = 128)
@@ -43,17 +56,22 @@ public class FilesEntity {
     }
 
     @Basic
-    @Column(name = "children", length = 128)
-    public String getChildren() { return children;}
+    @Column(name = "children", nullable = true, length = 128)
+    public String getChildren() {
+        return children;
+    }
 
-    public void setChildren(String children) { this.children = children;}
+    public void setChildren(String children) {
+        this.children = children;
+    }
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         FilesEntity that = (FilesEntity) o;
-        return Objects.equals(pathNameHash, that.pathNameHash) &&
+        return id == that.id &&
+                Objects.equals(pathNameHash, that.pathNameHash) &&
                 Objects.equals(fileName, that.fileName) &&
                 Objects.equals(path, that.path) &&
                 Objects.equals(children, that.children);
@@ -61,11 +79,11 @@ public class FilesEntity {
 
     @Override
     public int hashCode() {
-        return Objects.hash(pathNameHash, fileName, path, children);
+        return Objects.hash(id, pathNameHash, fileName, path, children);
     }
 
     @ManyToOne
-    @JoinColumn(name = "id", referencedColumnName = "id", nullable = false)
+    @JoinColumn(name = "id", referencedColumnName = "id", nullable = false, updatable = false, insertable = false)
     public AuthDataEntity getAuthdataById() {
         return authdataById;
     }

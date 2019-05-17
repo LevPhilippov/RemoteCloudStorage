@@ -156,34 +156,4 @@ public class Utils {
         return Paths.get(login, filesEntity.getPathNameHash());
     }
 
-//    public static int deleteFolders(String login, File path) {
-//        System.out.println("Путь для удаления папки: " + path);
-//        Session session = HibernateSessionFactory.getSessionFactory().openSession();
-//        AuthDataEntity authDataEntity = getLoginID(session, login);
-//        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path =:paramName2");
-//        query.setParameter("paramName1", authDataEntity);
-//        query.setParameter("paramName2", path.toString());
-//        System.out.println(query.list());
-//
-//        return 0;
-//
-//
-//
-//        Query query =  session.createQuery("DELETE FilesEntity WHERE authdataById =:paramName1 AND path LIKE :paramName2");
-//        Query query = session.createQuery("FROM FilesEntity WHERE authdataById =:paramName1 AND path LIKE :paramName2");
-//        query.setParameter("paramName1", authDataEntity);
-//        query.setParameter("paramName2", path+"%");
-//        List <FilesEntity> filesEntityList = query.list();
-//        List <File> filesList = new ArrayList<>();
-//        filesEntityList.stream().map(filesEntity -> new File(filesEntity.getPath(),filesEntity.getFileName())).forEach(filesList::add);
-//        Query query1 = session.createQuery("DELETE FilesEntity WHERE authdataById = :paramName1 AND pathNameHash = :paramName2");
-//        query1.setParameter("paramName1", authDataEntity);
-//        query1.setParameter("paramName2", DigestUtils.md5Hex(path.getParent() + path.getName()));
-//        Transaction tx = session.beginTransaction();
-//        int deleted = query.executeUpdate();
-//        deleted += query1.executeUpdate();
-//        tx.commit();
-//        session.close();
-//        return deleted;
-//    }
 }

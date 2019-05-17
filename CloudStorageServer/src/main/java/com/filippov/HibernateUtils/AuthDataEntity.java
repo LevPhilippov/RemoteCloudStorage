@@ -1,6 +1,7 @@
 package com.filippov.HibernateUtils;
 
 import javax.persistence.*;
+import java.util.Collection;
 import java.util.Objects;
 
 @Entity
@@ -9,6 +10,7 @@ public class AuthDataEntity {
     private int id;
     private String login;
     private String password;
+    private Collection<FilesEntity> filesById;
 
     @Id
     @Column(name = "id", nullable = false)
@@ -53,5 +55,14 @@ public class AuthDataEntity {
     @Override
     public int hashCode() {
         return Objects.hash(id, login, password);
+    }
+
+    @OneToMany(mappedBy = "authdataById")
+    public Collection<FilesEntity> getFilesById() {
+        return filesById;
+    }
+
+    public void setFilesById(Collection<FilesEntity> filesById) {
+        this.filesById = filesById;
     }
 }
