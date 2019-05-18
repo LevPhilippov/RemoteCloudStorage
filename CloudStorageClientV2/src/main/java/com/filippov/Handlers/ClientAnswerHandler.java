@@ -4,22 +4,25 @@ import com.filippov.*;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
+    private final Logger LOGGER = LogManager.getLogger(this.getClass().getCanonicalName());
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
             Request request = (Request) msg;
             switch (request.getAnswerType()) {
                 case FILELIST: {
-                    System.out.println("Обновляю список файлов на сервере " + request.getFileList().toString());
+                    LOGGER.debug("Обновляю список файлов на сервере {}", request.getFileList().toString());
                     Network.messageService.setSingleServiseMessage("Обновляю список файлов на сервере!");
                     Controller.controller.refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
                     break;
                 }
                 case AUTH_SUCCESS: {
                     Network.messageService.setSingleServiseMessage("Авторизация успешна!");
-                    System.out.println("Авторизация успешна!");
+                    LOGGER.info("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
                     break;
                 }
@@ -31,7 +34,7 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
                     break;
                 }
                 default: {
-                    System.out.println("Неизвестный ответ");
+                    LOGGER.info("Неизвестный ответ! Обновите версию клиентского приложения!");
                     break;
                 }
             }

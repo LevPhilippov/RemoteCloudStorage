@@ -13,6 +13,8 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import lombok.Getter;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.net.URL;
@@ -27,8 +29,9 @@ import java.util.ResourceBundle;
 public class Controller implements Initializable, MessageService  {
 
     public static Controller controller;
-
+    private Logger LOGGER;
     Network network;
+
     @FXML
     private VBox topBox;
     @FXML
@@ -42,18 +45,16 @@ public class Controller implements Initializable, MessageService  {
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        //binding fields
         controller = this;
         Network.messageService = this;
-        //network binding
+        LOGGER = LogManager.getLogger(this.getClass().getCanonicalName());
         network = Network.getInstance();
-        //listview setting
-        localListView.setManaged(true);
-        serverListView.setManaged(true);
-        localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-        //icons and images and binding listeners
+
+        //graphic setting
         CreateControllerGUI.setListenersOnListView(localListView,serverListView);
         CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton);
+
         //refresh lists
         refreshLocalFilesList();
         network.requestFilesListFromServer(null);
@@ -81,12 +82,11 @@ public class Controller implements Initializable, MessageService  {
             network.getPathHolder().getServerPathMap().clear();
             network.getPathHolder().setServerPath(serverPath);
             serverFileList.stream().map(file -> file.toPath()).forEach((path) -> {
-                System.out.println("Добавление в мапу /////////");
-                System.out.println("Имя файла: " + path.getFileName());
-                System.out.println("Путь:" + path.getParent());
+                LOGGER.trace("Добавление в мапу:\nИмя файла: {}\nПуть: {}",path.getFileName(),path.getParent() );
                 network.getPathHolder().getServerPathMap().put(path.getFileName().toString(),path);
             });
-            System.out.println("Набор ключей: " + network.getPathHolder().getServerPathMap().keySet());
+            LOGGER.trace("Набор ключей: {}", network.getPathHolder().getServerPathMap().keySet());
+
             serverListView.getItems().setAll(network.getPathHolder().getServerPathMap().keySet());
             if (network.getPathHolder().getServerPath()!=null)
                 serverFolder.setText(network.getPathHolder().getServerPath().toString());
@@ -129,7 +129,7 @@ public class Controller implements Initializable, MessageService  {
             return;
         }
         network.getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
-        System.out.println("Путь к папке клиента: " + network.getPathHolder().getClientPath());
+        LOGGER.trace("Путь к папке клиента: {}", network.getPathHolder().getClientPath());
         refreshLocalFilesList();
     }
 
@@ -145,14 +145,14 @@ public class Controller implements Initializable, MessageService  {
     public void deleteButton() {
             ObservableList observableList = localListView.getSelectionModel().getSelectedItems();
             if(!observableList.isEmpty()) {
-                System.out.println("Нажата кнопка удаления локальных файлов " + observableList);
+                LOGGER.trace("Нажата кнопка удаления локальных файлов: {} ", observableList);
                 network.filesHandler(observableList, Request.RequestType.DELETEFILES);
                 refreshLocalFilesList();
             }
 
             observableList = serverListView.getSelectionModel().getSelectedItems();
             if (!observableList.isEmpty()) {
-                System.out.println("Нажата кнопка удаления файлов на сервере " + observableList);
+                LOGGER.trace("Нажата кнопка удаления файлов на сервере: {} ", observableList);
                 network.sendFilesRequest(observableList, Request.RequestType.DELETEFILES);
                 network.requestFilesListFromServer(network.getPathHolder().getServerPath());
             }
@@ -174,14 +174,14 @@ public class Controller implements Initializable, MessageService  {
     public void getFileProperty(ActionEvent actionEvent) {
         String key = (String) localListView.getSelectionModel().getSelectedItem();
         if(key != null) {
-            System.out.println("Запрос свойств файла клиента " + key);
+            LOGGER.trace("Запрос свойств файла клиента: {} ", key);
             Path path = network.getPathHolder().getClientPathMap().get(key);
             CreateControllerGUI.showFileProperty(new FileProperties(path.getFileName().toString(), path.getParent().toString(), path));
         }
 
         key = (String) serverListView.getSelectionModel().getSelectedItem();
         if (key != null) {
-            System.out.println("Запрос свойств файла сервера " + key);
+            LOGGER.trace("Запрос свойств файла сервера: {}", key);
             network.sendPropertyRequest(key);
         }
     }

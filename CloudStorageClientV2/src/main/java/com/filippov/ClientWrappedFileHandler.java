@@ -2,6 +2,8 @@ package com.filippov;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -29,8 +31,7 @@ public class ClientWrappedFileHandler{
         try {
             fileSize = Files.size(localPath);
         } catch (IOException e) {
-            e.printStackTrace();
-            System.out.println("Упс! Файл попал в парсер и неожиданно потерялся!");
+            Network.LOGGER.error("Упс! Файл попал в парсер и неожиданно потерялся!\n" + e.getMessage());
         }
 
         if(fileSize<= byteBufferSize)
@@ -41,7 +42,7 @@ public class ClientWrappedFileHandler{
     }
 
     private static void saveChunk(WrappedFile wrappedFile) {
-        System.out.println("Запись чанка");
+        Network.LOGGER.trace("Запись чанка");
         Path targetPath = getlocalPath(wrappedFile);
 
         try {
@@ -66,15 +67,14 @@ public class ClientWrappedFileHandler{
             Controller.controller.setPullProgress(targetPath.getFileName().toString(), wrappedFile.getChunkNumber()*100/wrappedFile.getChunkslsInFile());
         } catch (IOException e) {
             Network.messageService.setSingleServiseMessage("Не удалось записать файл!");
-            System.out.println("Не удалось записать файл!");
-            e.printStackTrace();
+            Network.LOGGER.error("Не удалось записать файл!\n" + e.getMessage());
         } finally {
             Controller.controller.refreshLocalFilesList();
         }
     }
 
     private static void showError() {
-        System.out.println("Неизвестная команда");
+        Network.LOGGER.warn("Неизвестная команда");
     }
 
 
@@ -88,20 +88,19 @@ public class ClientWrappedFileHandler{
                 Files.write(targetPath,wrappedFile.getBytes());
                 Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
             } catch (IOException e) {
-                System.out.println("Не удалось записать файл!");
+                Network.LOGGER.error("Не удалось записать файл!" + e.getMessage());
                 Network.messageService.setSingleServiseMessage("Не удалось записать файл!");
-                e.printStackTrace();
             }
         } else {
             try {
                 Network.messageService.setSingleServiseMessage("Файл c таким именем уже существует! Выполняется перезапись!");
-                System.out.println("Файл уже существует! Перезаписываю!");
+                Network.LOGGER.warn("Файл уже существует! Перезаписываю!");
                 Files.delete(targetPath);
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
                 Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
             } catch (IOException e) {
-                e.printStackTrace();
+                Network.LOGGER.error("Ошибка! Не удалось записать файл!\n" + e.getMessage());
                 Network.messageService.setSingleServiseMessage("Ошибка! Не удалось записать файл!");
             }
         }
@@ -115,7 +114,7 @@ public class ClientWrappedFileHandler{
             targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
                     Network.getInstance().getPathHolder().getClientPath().toString(),
                     wrappedFile.getFileName());
-            System.out.println("Файл будет записан по адресу: " + targetPath);
+            Network.LOGGER.info("Файл будет записан по адресу: {} ", targetPath);
         } else {
             targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
                     Network.getInstance().getPathHolder().getClientPath().toString(),
@@ -126,13 +125,13 @@ public class ClientWrappedFileHandler{
 
 
     public static void wrapAndWriteFile(Path localPath, Path serverPath, Channel channel) {
-        System.out.printf("Файл %s будет записан в канал и размещен в папке %s\n ", localPath.getFileName(), serverPath);
+        Network.LOGGER.info("Файл {} будет записан в канал и размещен в папке {}\n ", localPath.getFileName(), serverPath);
         try {
             byte[] bytes = Files.readAllBytes(localPath);
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
                     localPath.getFileName().toString(),serverPath.toFile());
-            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
+//            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 if(channelFuture.isSuccess()){
                     //уведомление о прогрессе отправки летит в сервисную область.
@@ -141,17 +140,15 @@ public class ClientWrappedFileHandler{
             });
         } catch (IOException a) {
             Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
-            System.out.println("Ошибка записи");
-            a.printStackTrace();
+            Network.LOGGER.error("Ошибка записи!\n" + a.getMessage());
         }
     }
 
 
     public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
-        System.out.println("-------------------------------------------------------------");
-        System.out.println("Указанный путь к файлу: " + localPath);
-        System.out.println("Имя файла: " + localPath.getFileName());
-        System.out.println("Указанный удаленный путь" + targetPath);
+        Network.LOGGER.trace("Указанный путь к файлу: {}", localPath);
+        Network.LOGGER.trace("Имя файла: {} ", localPath.getFileName());
+        Network.LOGGER.trace("Указанный удаленный путь: {}", targetPath);
         Network.messageService.setSingleServiseMessage("Записываем файл: " + localPath.getFileName());
 
         if(Files.exists(localPath)) {
@@ -165,7 +162,7 @@ public class ClientWrappedFileHandler{
                     chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
+                Network.LOGGER.error("Файл не найден!\n" + e.getMessage());
             }
             byte[] byteBuffer = new byte[byteBufferSize];
             int bytesRed=0;
@@ -182,7 +179,7 @@ public class ClientWrappedFileHandler{
                     Controller.controller.setPushProgress(file.getName(), 0L);
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                         if(channelFuture.isSuccess()){
-                            System.out.printf("Записан чанк %d из %d\n", finalChunkCounter, finalChunks);
+                            Network.LOGGER.info("Записан чанк {} из {}", finalChunkCounter, finalChunks);
                             //уведомление о прогрессе отправки летит в сервисную область.
                             Controller.controller.setPushProgress(file.getName(), finalChunkCounter*100/finalChunks);
                         }
@@ -190,8 +187,8 @@ public class ClientWrappedFileHandler{
                     chunkCounter++;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-                Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
+                Network.LOGGER.error(e.getMessage());
+                Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!\n" + e.getMessage());
             }
         }
     }

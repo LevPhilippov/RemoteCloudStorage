@@ -58,6 +58,7 @@ public class LogController implements Initializable, MessageService {
 
     public void tryNewId() {
         try {
+            Network.getInstance().setLogin(loginField.getText());
             Network.getInstance().requestAuth(new AuthData(loginField.getText(), passwordField.getText(), true), this);
         } catch (Exception e) {
             e.printStackTrace();
@@ -66,7 +67,7 @@ public class LogController implements Initializable, MessageService {
 
     public void tryAuth() {
         try {
-
+            Network.getInstance().setLogin(loginField.getText());
             Network.getInstance().requestAuth(new AuthData(loginField.getText(), passwordField.getText(), false), this);
         } catch (Exception e) {
             e.printStackTrace();

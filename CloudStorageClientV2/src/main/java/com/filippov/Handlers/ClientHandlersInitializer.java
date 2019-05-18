@@ -21,11 +21,14 @@ public class ClientHandlersInitializer  extends ChannelInitializer <SocketChanne
         final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
         //SSL
 
-        socketChannel.pipeline().addLast(sslCtx.newHandler(socketChannel.alloc(), Network.HOST, Network.PEER_PORT),
-                new LoggingHandler("EndLogger", LogLevel.INFO),
+        socketChannel.pipeline().addLast(
+                sslCtx.newHandler(socketChannel.alloc(), Network.HOST, Network.PEER_PORT),
+                new LoggingHandler("HeadHandler", LogLevel.TRACE),
                 new ObjectDecoder(ClientWrappedFileHandler.byteBufferSize+1024*1024, ClassResolvers.cacheDisabled(null)),
                 new ObjectEncoder(),
+                new LoggingHandler("ObjectHandler",LogLevel.DEBUG),
                 new ObjectInboundHandler(),
+                new LoggingHandler("AnswerHandler",LogLevel.DEBUG),
                 new ClientAnswerHandler()
         );
     }

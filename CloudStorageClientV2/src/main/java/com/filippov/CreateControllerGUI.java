@@ -1,19 +1,11 @@
 package com.filippov;
 
 import javafx.event.EventHandler;
-import javafx.fxml.FXMLLoader;
-import javafx.scene.Parent;
-import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
-import javafx.scene.layout.VBox;
-import javafx.stage.Modality;
-import javafx.stage.Stage;
-
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -71,6 +63,11 @@ public class CreateControllerGUI {
     }
 
     public static void setListenersOnListView(ListView localListView, ListView serverListView) {
+        localListView.setManaged(true);
+        serverListView.setManaged(true);
+        localListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+        serverListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+
         localListView.setOnMouseClicked(new EventHandler<MouseEvent>() {
             @Override
             public void handle(MouseEvent event) {
@@ -86,16 +83,16 @@ public class CreateControllerGUI {
                         return;
                     }
                     Path path = Paths.get(PathHolder.baseLocalPath.toString(), Network.getInstance().getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
-                    System.out.println(path.toString());
+//                    System.out.println(path.toString());
                     if(Files.isDirectory(path)) {
-                        System.out.println("-----------------------------");
-                        System.out.println("Новый путь к директории клиента: " + path.toString());
-                        System.out.println("-----------------------------");
+//                        System.out.println("-----------------------------");
+//                        System.out.println("Новый путь к директории клиента: " + path.toString());
+//                        System.out.println("-----------------------------");
                         Network.getInstance().getPathHolder().setClientPath(PathHolder.baseLocalPath.relativize(path));
                         Controller.controller.refreshLocalFilesList();
                         return;
                     }
-                    System.out.println("Выбранный файл не является директорией!");
+//                    System.out.println("Выбранный файл не является директорией!");
                 }
             }
         });
@@ -115,7 +112,7 @@ public class CreateControllerGUI {
                         return;
                     }
                     Path path = Paths.get(Network.getInstance().getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
-                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
+//                    System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
                     Network.getInstance().requestFilesListFromServer(path);
                 }
             }

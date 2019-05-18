@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Configuration xmlns="http://logging.apache.org/log4j/2.0/config">
+
+    <Properties>
+        <Property name="basePath">serverLogs</Property>
+    </Properties>
+
+    <Appenders>
+
+        <File name="file" fileName="${basePath}/serverLogfile.log" append="true">
+            <PatternLayout pattern="%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L) - %m%n" />
+        </File>
+
+        <Console name="console" target="SYSTEM_OUT">
+            <PatternLayout pattern="%-5p %d{yyyy-MM-dd HH:mm:ss} [%t] %C (%F:%L) - %m%n" />
+        </Console>
+
+    </Appenders>
+
+    <Loggers>
+        <Logger name="com.filippov.Server" level="info" additivity="false">
+            <AppenderRef ref="console"></AppenderRef>\
+            <AppenderRef ref="file"></AppenderRef>
+        </Logger>
+
+        <Root level="error">
+            <AppenderRef ref="console" />
+            <AppenderRef ref="file" />
+        </Root>
+
+    </Loggers>
+</Configuration>

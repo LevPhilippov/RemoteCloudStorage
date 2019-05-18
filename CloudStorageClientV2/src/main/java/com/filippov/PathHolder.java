@@ -17,7 +17,6 @@ public class PathHolder {
     public PathHolder() {
         this.clientPath = Paths.get("");
         this.serverPath = baseServerPath;
-        System.out.println("Определение корневого пути: " + baseLocalPath.toAbsolutePath());
     }
 
     public Path getClientPath() {

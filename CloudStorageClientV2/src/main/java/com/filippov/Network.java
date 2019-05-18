@@ -6,27 +6,29 @@ import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import javafx.collections.ObservableList;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.logging.Logger;
 
 public class Network{
+
     public static final String HOST = "localhost";
     public static final int PEER_PORT = 8189;
     private static Network ourInstance = new Network();
     public static Network getInstance() {return ourInstance;}
-    private Network(){}
     private static PathHolder pathHolder = new PathHolder();
     private ChannelFuture cf;
     private EventLoopGroup bossGroup;
     private Bootstrap bootstrap;
     public static MessageService messageService;
     private Thread networkThread;
-
+    public static final Logger LOGGER = LogManager.getLogger(ourInstance.getClass().getCanonicalName());
+    private String login;
 
     public void startNetwork(AuthData authData, LogController logController) {
         bossGroup = new NioEventLoopGroup();
@@ -43,9 +45,10 @@ public class Network{
                     cf = bootstrap.connect("127.0.0.1", 8189);
                     cf.addListener((ChannelFutureListener) channelFuture -> {
                         if(!channelFuture.isSuccess()) {
-                            System.out.println("Connnection failed!");
+                            LOGGER.warn("{}: Connnection failed!", login);
                         } else {
                             messageService.setSingleServiseMessage("Успешное подключение!");
+                            LOGGER.info("{}: успешное подключение!", login);
                             //метод на изменение статуса сети
                             requestAuth(authData, logController);
                         }
@@ -54,7 +57,8 @@ public class Network{
 
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
-                    System.out.println("Thread interruption exeption!");
+                    LOGGER.info("{}: Thread interruption exeption!", login);
+
                     e.printStackTrace();
                 }
                 finally {
@@ -71,11 +75,11 @@ public class Network{
 
     public void requestAuth(AuthData authData, LogController logController) {
         if(networkThread == null) {
-            System.out.println("Запускаю сеть!");
+            LOGGER.info("{}: Запускаю сеть!", login);
             messageService.setSingleServiseMessage("Запускаю сеть!");
             startNetwork(authData, logController);
         } else if (networkIsActive()) {
-            System.out.println("Отправлены авторизационные данные!");
+            LOGGER.info("{}: Отправлены авторизационные данные", login);
             messageService.setSingleServiseMessage("Отправлены авторизационные данные!");
             cf.channel().writeAndFlush(authData);
         }
@@ -116,7 +120,7 @@ public class Network{
         if (path!=null) {
             request.setServerPath(path.toFile());
         }
-        System.out.println("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
+        LOGGER.info("{}: Запрос списка файлов на сервере по адресу: {}", login, request.getServerPath().toString());
         messageService.setSingleServiseMessage("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
         cf.channel().writeAndFlush(request);
     }
@@ -124,9 +128,6 @@ public class Network{
     public void sendFilesRequest(ObservableList<String> os, Request.RequestType requestType) {
         List <File> filesList = new ArrayList<>();
         os.stream().map(key -> pathHolder.getServerPathMap().get(key).toFile()).forEach(filesList::add);
-
-        System.out.println("Запрос файлов из облака " + filesList);
-        messageService.setSingleServiseMessage("Запрос файлов из облака " + filesList);
         cf.channel().writeAndFlush(new Request()
                 .setRequestType(requestType)
                 .setFileList(filesList));
@@ -141,4 +142,7 @@ public class Network{
         return pathHolder;
     }
 
+    public void setLogin(String login) {
+        this.login = login;
+    }
 }

@@ -25,18 +25,18 @@ public class MyFileVisitor implements FileVisitor<Path> {
        //домашний путь вначале обхода
         if(startPath == null) {
             startPath = dir.getParent();
-            System.out.println("STARTPATH IS: " + startPath);
+//            System.out.println("STARTPATH IS: " + startPath);
         }
 
         relativePath = Paths.get (Network.getInstance().getPathHolder().getServerPath().toString(), startPath.relativize(dir).toString());
-        System.out.println("-----------");
-        System.out.println("Previzit: " + dir);
-        System.out.println("Relativize: " + relativePath);
-        System.out.println("-----------");
+//        System.out.println("-----------");
+//        System.out.println("Previzit: " + dir);
+//        System.out.println("Relativize: " + relativePath);
+//        System.out.println("-----------");
 
         switch (requestType){
             case SENDFILES:{
-                System.out.println("Отправляю запрос на создание папки " + dir.getFileName() + " по адресу" + relativePath);
+//                System.out.println("Отправляю запрос на создание папки " + dir.getFileName() + " по адресу" + relativePath);
                 Request createFolder = new Request();
                 createFolder.setRequestType(Request.RequestType.CREATE_FOLDER).setServerPath(relativePath.toFile());
                 channel.writeAndFlush(createFolder);
@@ -49,7 +49,7 @@ public class MyFileVisitor implements FileVisitor<Path> {
 
     @Override
     public  FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-        System.out.printf("File %s with path %s\n", file.getFileName(), relativePath);
+//        System.out.printf("File %s with path %s\n", file.getFileName(), relativePath);
         switch (requestType){
             case SENDFILES:{
                 ClientWrappedFileHandler.parseToSend(file, relativePath, channel);
@@ -66,7 +66,7 @@ public class MyFileVisitor implements FileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFileFailed(Path file, IOException exc) throws IOException {
-        System.out.println("Ошибка отправки файла");
+//        System.out.println("Ошибка отправки файла");
         return null;
     }
 
