@@ -1,5 +1,7 @@
 package com.filippov;
-@FunctionalInterface
+
+import javafx.scene.control.TextArea;
+
 public interface MessageService {
-    void setServiseMessage(String message);
+    void setSingleServiseMessage(String message);
 }

@@ -1,15 +1,19 @@
 package com.filippov;
 
 import javafx.event.EventHandler;
-import javafx.scene.control.Alert;
-import javafx.scene.control.Button;
-import javafx.scene.control.ButtonType;
-import javafx.scene.control.ListView;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
+import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
+import javafx.stage.Modality;
+import javafx.stage.Stage;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -20,7 +24,6 @@ import java.util.Optional;
 public class CreateControllerGUI {
 
     private static Button pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton;
-
     /**
      * Порядок: pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton
      * */
@@ -79,6 +82,9 @@ public class CreateControllerGUI {
                     backClientButton.setDisable(false);
                 }
                 if(event.getClickCount()==2) {
+                    if (localListView.getSelectionModel().getSelectedItems().isEmpty()){
+                        return;
+                    }
                     Path path = Paths.get(PathHolder.baseLocalPath.toString(), Network.getInstance().getPathHolder().getClientPath().toString(), (String)localListView.getSelectionModel().getSelectedItem());
                     System.out.println(path.toString());
                     if(Files.isDirectory(path)) {
@@ -105,6 +111,9 @@ public class CreateControllerGUI {
                     backClientButton.setDisable(true);
                 }
                 if(event.getClickCount()==2) {
+                    if (serverListView.getSelectionModel().getSelectedItems().isEmpty()){
+                        return;
+                    }
                     Path path = Paths.get(Network.getInstance().getPathHolder().getServerPath().toString(),(String)serverListView.getSelectionModel().getSelectedItem());
                     System.out.println("Запрашиваю список файлов сервера в каталоге: " + path.toString());
                     Network.getInstance().requestFilesListFromServer(path);
@@ -125,7 +134,6 @@ public class CreateControllerGUI {
         // showAndWait() показывает Alert и блокирует остальное приложение пока мы не закроем Alert
         Optional<ButtonType> result = alert.showAndWait();
         if (result.get().getText().equals("OK")) {
-        } else if (result.get().getText().equals("Cancel")) {
         }
     }
 }

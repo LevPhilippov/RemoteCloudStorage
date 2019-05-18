@@ -7,6 +7,9 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.FileTime;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 
 @Getter
 @Setter
@@ -49,7 +52,10 @@ public class FileProperties implements Serializable {
     private String getLastModificationTime(Path path) {
         String time=null;
         try {
-            time = Files.getLastModifiedTime(path).toString();
+            FileTime fileTime = Files.getLastModifiedTime(path);
+            String pattern = "yyyy-MM-dd HH:mm:ss";
+            SimpleDateFormat simpleDateFormat = new SimpleDateFormat(pattern);
+            return simpleDateFormat.format(new Date(fileTime.toMillis()));
         } catch (IOException e) {
             e.printStackTrace();
         }

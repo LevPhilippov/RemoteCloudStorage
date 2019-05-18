@@ -14,11 +14,12 @@
             <TextField  fx:id="serverFolder" promptText="Server" disable="true"/>
             <ListView fx:id="serverListView" />
             <Button fx:id="backServerButton" prefWidth="475" alignment="CENTER" onAction="#stepBackServerPath"/>
+            <TextField fx:id="pullProgressField" alignment="CENTER" disable="true"/>
         </VBox>
         <VBox prefWidth="50">
             <Label minHeight="30"/>
             <Button fx:id="pushButton" onAction="#push"/>
-            <Button fx:id="pullButton" onAction="#requestFile"/>
+            <Button fx:id="pullButton" onAction="#pull"/>
             <Button fx:id="deleteButton" onAction="#deleteButton"/>
             <Button fx:id="propertyButton" onAction="#getFileProperty"/>
             <Button fx:id="disconnectButton" onAction="#disconnest"/>
@@ -28,6 +29,7 @@
             <TextField fx:id="clientFolder" promptText="Local" disable="true"/>
             <ListView fx:id="localListView" />
             <Button fx:id="backClientButton" prefWidth="475" alignment="CENTER" onAction="#stepBackClientPath"/>
+            <TextField fx:id="pushProgressField" alignment="CENTER" disable="true"/>
         </VBox>
     </HBox>
     <TextArea fx:id="serviceMessageArea" editable="false" VBox.vgrow="ALWAYS"/>

@@ -14,7 +14,7 @@ import java.nio.file.StandardOpenOption;
 
 public class ClientWrappedFileHandler{
 
-    public static int byteBufferSize = 1024*1024*5;
+    public static int byteBufferSize = 1024*1024;
 
     public static void parseToSave(WrappedFile wrappedFile) {
         switch (wrappedFile.getTypeEnum()) {
@@ -50,18 +50,22 @@ public class ClientWrappedFileHandler{
                 Files.createDirectories(targetPath.getParent());
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
+
                 return;
             } //если файл уже существует он будет перезаписан
             else if (Files.exists(targetPath) && wrappedFile.getChunkNumber()==1) {
                 Files.delete(targetPath);
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
                 return;
             }
             //если ни то ни другое
             Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+            Controller.controller.setPullProgress(targetPath.getFileName().toString(), wrappedFile.getChunkNumber()*100/wrappedFile.getChunkslsInFile());
         } catch (IOException e) {
-            Network.messageService.setServiseMessage("Не удалось записать файл!");
+            Network.messageService.setSingleServiseMessage("Не удалось записать файл!");
             System.out.println("Не удалось записать файл!");
             e.printStackTrace();
         } finally {
@@ -82,21 +86,23 @@ public class ClientWrappedFileHandler{
                 Files.createDirectories(targetPath.getParent());
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes());
+                Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
             } catch (IOException e) {
                 System.out.println("Не удалось записать файл!");
-                Network.messageService.setServiseMessage("Не удалось записать файл!");
+                Network.messageService.setSingleServiseMessage("Не удалось записать файл!");
                 e.printStackTrace();
             }
         } else {
             try {
-                Network.messageService.setServiseMessage("Файл c таким именем уже существует! Выполняется перезапись!");
+                Network.messageService.setSingleServiseMessage("Файл c таким именем уже существует! Выполняется перезапись!");
                 System.out.println("Файл уже существует! Перезаписываю!");
                 Files.delete(targetPath);
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
             } catch (IOException e) {
                 e.printStackTrace();
-                Network.messageService.setServiseMessage("Ошибка! Не удалось записать файл!");
+                Network.messageService.setSingleServiseMessage("Ошибка! Не удалось записать файл!");
             }
         }
         Controller.controller.refreshLocalFilesList();
@@ -128,10 +134,13 @@ public class ClientWrappedFileHandler{
                     localPath.getFileName().toString(),serverPath.toFile());
             System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                System.out.println("Writing Complete!");
+                if(channelFuture.isSuccess()){
+                    //уведомление о прогрессе отправки летит в сервисную область.
+                    Controller.controller.setPushProgress(localPath.getFileName().toString(), 100L);
+                }
             });
         } catch (IOException a) {
-            Network.messageService.setServiseMessage("Не удалось выполнить запись файла в канал!");
+            Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
             System.out.println("Ошибка записи");
             a.printStackTrace();
         }
@@ -143,6 +152,7 @@ public class ClientWrappedFileHandler{
         System.out.println("Указанный путь к файлу: " + localPath);
         System.out.println("Имя файла: " + localPath.getFileName());
         System.out.println("Указанный удаленный путь" + targetPath);
+        Network.messageService.setSingleServiseMessage("Записываем файл: " + localPath.getFileName());
 
         if(Files.exists(localPath)) {
             long chunkCounter = 1;
@@ -162,22 +172,26 @@ public class ClientWrappedFileHandler{
             File file = localPath.toFile();
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
-
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,
                             localPath.getFileName().toString(), targetPath.toFile());
-
+                    ///т.к. в анонимном классе Java8 хочет effectively final - переменные
+                    long finalChunkCounter = chunkCounter;
+                    long finalChunks = chunks;
+                    ///
+                    Controller.controller.setPushProgress(file.getName(), 0L);
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                        System.out.println("Writing Complete!");
-                    }).sync();
-                    System.out.printf("Записан чанк %d из %d\n", chunkCounter, chunks);
+                        if(channelFuture.isSuccess()){
+                            System.out.printf("Записан чанк %d из %d\n", finalChunkCounter, finalChunks);
+                            //уведомление о прогрессе отправки летит в сервисную область.
+                            Controller.controller.setPushProgress(file.getName(), finalChunkCounter*100/finalChunks);
+                        }
+                    });
                     chunkCounter++;
                 }
             } catch (IOException e) {
                 e.printStackTrace();
-                Network.messageService.setServiseMessage("Не удалось выполнить запись файла в канал!");
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
             }
         }
     }

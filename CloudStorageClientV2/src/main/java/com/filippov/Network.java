@@ -1,29 +1,18 @@
 package com.filippov;
 
-import com.filippov.Handlers.ClientAnswerHandler;
 import com.filippov.Handlers.ClientHandlersInitializer;
-import com.filippov.Handlers.ObjectInboundHandler;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.serialization.ClassResolvers;
-import io.netty.handler.codec.serialization.ObjectDecoder;
-import io.netty.handler.codec.serialization.ObjectEncoder;
-import io.netty.handler.logging.LogLevel;
-import io.netty.handler.logging.LoggingHandler;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import javafx.collections.ObservableList;
 
-import javax.net.ssl.SSLException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Logger;
 
 public class Network{
     public static final String HOST = "localhost";
@@ -40,7 +29,7 @@ public class Network{
 
 
     public void startNetwork(AuthData authData, LogController logController) {
-        bossGroup = new NioEventLoopGroup(2);
+        bossGroup = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
         networkThread = new Thread(new Runnable() {
             @Override
@@ -56,7 +45,7 @@ public class Network{
                         if(!channelFuture.isSuccess()) {
                             System.out.println("Connnection failed!");
                         } else {
-                            messageService.setServiseMessage("Успешное подключение!");
+                            messageService.setSingleServiseMessage("Успешное подключение!");
                             //метод на изменение статуса сети
                             requestAuth(authData, logController);
                         }
@@ -83,11 +72,11 @@ public class Network{
     public void requestAuth(AuthData authData, LogController logController) {
         if(networkThread == null) {
             System.out.println("Запускаю сеть!");
-            messageService.setServiseMessage("Запускаю сеть!");
+            messageService.setSingleServiseMessage("Запускаю сеть!");
             startNetwork(authData, logController);
         } else if (networkIsActive()) {
             System.out.println("Отправлены авторизационные данные!");
-            messageService.setServiseMessage("Отправлены авторизационные данные!");
+            messageService.setSingleServiseMessage("Отправлены авторизационные данные!");
             cf.channel().writeAndFlush(authData);
         }
     }
@@ -128,7 +117,7 @@ public class Network{
             request.setServerPath(path.toFile());
         }
         System.out.println("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
-        messageService.setServiseMessage("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
+        messageService.setSingleServiseMessage("Запрос списка файлов на сервере по адресу: " + request.getServerPath().toString());
         cf.channel().writeAndFlush(request);
     }
 
@@ -137,7 +126,7 @@ public class Network{
         os.stream().map(key -> pathHolder.getServerPathMap().get(key).toFile()).forEach(filesList::add);
 
         System.out.println("Запрос файлов из облака " + filesList);
-        messageService.setServiseMessage("Запрос файлов из облака " + filesList);
+        messageService.setSingleServiseMessage("Запрос файлов из облака " + filesList);
         cf.channel().writeAndFlush(new Request()
                 .setRequestType(requestType)
                 .setFileList(filesList));
@@ -151,4 +140,5 @@ public class Network{
     public PathHolder getPathHolder() {
         return pathHolder;
     }
+
 }

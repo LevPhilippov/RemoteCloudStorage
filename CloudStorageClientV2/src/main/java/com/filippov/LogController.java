@@ -82,7 +82,7 @@ public class LogController implements Initializable, MessageService {
     }
 
     @Override
-    public void setServiseMessage(String message) {
+    public void setSingleServiseMessage(String message) {
         serviceMessageArea.appendText(message + "\n");
     }
 }

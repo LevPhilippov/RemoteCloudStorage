@@ -5,9 +5,6 @@ import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
 
-import java.io.File;
-import java.util.function.Consumer;
-
 public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -16,12 +13,12 @@ public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
             switch (request.getAnswerType()) {
                 case FILELIST: {
                     System.out.println("Обновляю список файлов на сервере " + request.getFileList().toString());
-                    Network.messageService.setServiseMessage("Обновляю список файлов на сервере!");
+                    Network.messageService.setSingleServiseMessage("Обновляю список файлов на сервере!");
                     Controller.controller.refreshServerFileList(request.getFileList(), request.getServerPath().toPath());
                     break;
                 }
                 case AUTH_SUCCESS: {
-                    Network.messageService.setServiseMessage("Авторизация успешна!");
+                    Network.messageService.setSingleServiseMessage("Авторизация успешна!");
                     System.out.println("Авторизация успешна!");
                     ClientMain.clientMain.setMainScene();
                     break;

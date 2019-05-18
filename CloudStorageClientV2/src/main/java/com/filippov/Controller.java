@@ -38,7 +38,7 @@ public class Controller implements Initializable, MessageService  {
     @FXML
     private ListView serverListView, localListView;
     @FXML
-    private TextField serverFolder, clientFolder;
+    private TextField serverFolder, clientFolder, pushProgressField, pullProgressField;
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
@@ -95,6 +95,9 @@ public class Controller implements Initializable, MessageService  {
     }
 
     public void push() {
+        if (localListView.getSelectionModel().getSelectedItems().isEmpty()){
+            return;
+        }
         ObservableList <String> os = localListView.getSelectionModel().getSelectedItems();
         network.filesHandler(os, Request.RequestType.SENDFILES);
     }
@@ -104,7 +107,10 @@ public class Controller implements Initializable, MessageService  {
         ClientMain.clientMain.setLogScene();
     }
 
-    public void requestFile() {
+    public void pull() {
+        if (serverListView.getSelectionModel().getSelectedItems().isEmpty()){
+            return;
+        }
         ObservableList<String> os = serverListView.getSelectionModel().getSelectedItems();
         network.sendFilesRequest(os, Request.RequestType.GETFILES);
     }
@@ -161,7 +167,7 @@ public class Controller implements Initializable, MessageService  {
     }
 
     @Override
-    public void setServiseMessage(String message) {
+    public void setSingleServiseMessage(String message) {
         serviceMessageArea.appendText(message + "\n");
     }
 
@@ -178,6 +184,20 @@ public class Controller implements Initializable, MessageService  {
             System.out.println("Запрос свойств файла сервера " + key);
             network.sendPropertyRequest(key);
         }
+    }
 
+    public void setPushProgress(String fileName, Long progress){
+        Runnable runnable = () -> {
+            String text = String.format("Pushing: %s Progress: %d %%", fileName, progress);
+            pushProgressField.setText(text);
+        };
+        refreshPattern(runnable);
+    }
+    public void setPullProgress(String fileName, Long progress){
+        Runnable runnable = () -> {
+            String text = String.format("Pulling: %s Progress: %d %%", fileName, progress);
+            pullProgressField.setText(text);
+        };
+        refreshPattern(runnable);
     }
 }

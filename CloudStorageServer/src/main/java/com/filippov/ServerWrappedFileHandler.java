@@ -17,7 +17,7 @@ import java.util.List;
 
 public class ServerWrappedFileHandler {
 
-    public static int byteBufferSize = 1024*1024*5;
+    public static int byteBufferSize = 1024*1024;
 
 
     public static void parseToSave(WrappedFile wrappedFile) {
@@ -87,7 +87,9 @@ public class ServerWrappedFileHandler {
                     fileName, targetPath.toFile());
 
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                System.out.println("Writing Complete!");
+                if(channelFuture.isSuccess()){
+                    System.out.println("Writing Complete!");
+                }
             });
         } catch (IOException a) {
             System.out.println("Ошибка записи");
@@ -125,13 +127,13 @@ public class ServerWrappedFileHandler {
                             fileName, targetPath.toFile());
 
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                        System.out.println("Writing Complete!");
-                    }).sync();
+                        if(channelFuture.isSuccess()){
+                            System.out.println("Writing Complete!");
+                        }
+                    });
                     chunkCounter++;
                 }
             } catch (IOException e) {
-                e.printStackTrace();
-            } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
