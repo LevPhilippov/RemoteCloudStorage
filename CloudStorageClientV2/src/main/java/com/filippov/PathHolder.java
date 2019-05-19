@@ -1,6 +1,8 @@
 package com.filippov;
 
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.HashMap;
@@ -17,6 +19,14 @@ public class PathHolder {
     public PathHolder() {
         this.clientPath = Paths.get("");
         this.serverPath = baseServerPath;
+
+        if (!Files.exists(baseLocalPath)) {
+            try {
+                Files.createDirectories(baseLocalPath);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public Path getClientPath() {

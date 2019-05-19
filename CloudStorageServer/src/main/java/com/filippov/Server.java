@@ -8,16 +8,23 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Server {
     ChannelFuture channelFuture;
-    public static final Path rootPath = Paths.get("","ServerStorage").toAbsolutePath();
+    public static final Path rootPath = Paths.get("","ServerStorage");
     private static final Logger LOGGER = LogManager.getLogger(Server.class.getCanonicalName());
 
     public void run() throws Exception {
-        LOGGER.info("Базовый путь к папке-хранилищу: " + rootPath.toAbsolutePath().toString());
+        LOGGER.info("Базовый путь к папке-хранилищу: " + rootPath.toString());
+
+        if(!Files.exists(rootPath.toAbsolutePath())) {
+            Files.createDirectories(rootPath);
+        }
+
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {

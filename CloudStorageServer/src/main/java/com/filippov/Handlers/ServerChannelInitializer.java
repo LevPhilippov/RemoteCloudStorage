@@ -26,10 +26,12 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
             setupSSL();
             socketChannel.pipeline().addLast(
                     sslCtx.newHandler(socketChannel.alloc()),
-                    new LoggingHandler("commonLog", LogLevel.INFO),
+                    new LoggingHandler("HeadLogger", LogLevel.TRACE),
                     new ObjectEncoder(),
                     new ObjectDecoder(ServerWrappedFileHandler.byteBufferSize + 1024 * 1024, ClassResolvers.cacheDisabled(null)),
+                    new LoggingHandler("AuthLogger", LogLevel.DEBUG),
                     new AuthHandler(),
+                    new LoggingHandler("ObjectLogger", LogLevel.DEBUG),
                     new ObjectInboundHandler());
     }
 

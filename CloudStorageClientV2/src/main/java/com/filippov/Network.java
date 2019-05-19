@@ -31,6 +31,7 @@ public class Network{
     private String login;
 
     public void startNetwork(AuthData authData, LogController logController) {
+
         bossGroup = new NioEventLoopGroup();
         bootstrap = new Bootstrap();
         networkThread = new Thread(new Runnable() {
@@ -58,7 +59,6 @@ public class Network{
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
                     LOGGER.info("{}: Thread interruption exeption!", login);
-
                     e.printStackTrace();
                 }
                 finally {

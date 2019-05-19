@@ -21,6 +21,7 @@ public class ClientMain extends Application {
     public void start(Stage primaryStage) throws Exception{
         clientMain=this;
         this.primaryStage = primaryStage;
+
         setLogScene();
     }
 

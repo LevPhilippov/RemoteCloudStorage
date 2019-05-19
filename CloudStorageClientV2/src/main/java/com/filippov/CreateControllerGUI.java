@@ -15,9 +15,9 @@ import java.util.Optional;
 
 public class CreateControllerGUI {
 
-    private static Button pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton;
+    private static Button pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton, refreshButton;
     /**
-     * Порядок: pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton
+     * Порядок: pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButtob, refreshButton
      * */
     public static void bindIcons(Pane pane, Button...buttons) {
         pushButton = buttons[0];
@@ -28,21 +28,24 @@ public class CreateControllerGUI {
         backServerButton = buttons[5];
         backClientButton = buttons[6];
         propertyButton = buttons[7];
+        refreshButton = buttons[8];
 
 
         List<ImageView> imageViews = new ArrayList<>();
-        //push
+        //push 0
         imageViews.add(new ImageView(new Image("icons/doubleArrowLeft48.png")));
-        //pull
+        //pull 1
         imageViews.add(new ImageView(new Image("icons/doubleArrowRight48.png")));
-        //delete
+        //delete 2
         imageViews.add(new ImageView(new Image("icons/recycle100.png")));
-        //disconnect
+        //disconnect 3
         imageViews.add(new ImageView(new Image("icons/disconnect64.png")));
-        //shutdown
+        //shutdown 4
         imageViews.add(new ImageView(new Image("icons/shutdown48.png")));
-        //property
+        //property 5
         imageViews.add(new ImageView(new Image("icons/property64.png")));
+        //refresh 6
+        imageViews.add(new ImageView(new Image("icons/refresh30.png")));
         for (ImageView imageView : imageViews) {
             imageView.setFitHeight(30);
             imageView.setFitWidth(30);
@@ -53,6 +56,7 @@ public class CreateControllerGUI {
         disconnectButton.setGraphic(imageViews.get(3));
         closeAppButton.setGraphic(imageViews.get(4));
         propertyButton.setGraphic(imageViews.get(5));
+        refreshButton.setGraphic(imageViews.get(6));
 
         ImageView backImage = new ImageView(new Image("icons/back16.png"));
         ImageView backImage2 = new ImageView(new Image("icons/back16.png"));

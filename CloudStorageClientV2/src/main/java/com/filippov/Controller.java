@@ -37,7 +37,7 @@ public class Controller implements Initializable, MessageService  {
     @FXML
     private TextArea serviceMessageArea;
     @FXML
-    private Button pushButton, pullButton, deleteButton, closeAppButton, disconnectButton, backServerButton, backClientButton, propertyButton;
+    private Button pushButton, pullButton, deleteButton, closeAppButton, disconnectButton, backServerButton, backClientButton, propertyButton, refreshButton;
     @FXML
     private ListView serverListView, localListView;
     @FXML
@@ -53,7 +53,7 @@ public class Controller implements Initializable, MessageService  {
 
         //graphic setting
         CreateControllerGUI.setListenersOnListView(localListView,serverListView);
-        CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton);
+        CreateControllerGUI.bindIcons(topBox, pushButton, pullButton, deleteButton,disconnectButton, closeAppButton, backServerButton, backClientButton, propertyButton, refreshButton);
 
         //refresh lists
         refreshLocalFilesList();
@@ -199,5 +199,10 @@ public class Controller implements Initializable, MessageService  {
             pullProgressField.setText(text);
         };
         refreshPattern(runnable);
+    }
+
+    public void refreshLists(ActionEvent actionEvent) {
+        refreshLocalFilesList();
+        network.requestFilesListFromServer(network.getPathHolder().getServerPath());
     }
 }

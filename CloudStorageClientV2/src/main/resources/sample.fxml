@@ -21,6 +21,7 @@
             <Button fx:id="pushButton" onAction="#push"/>
             <Button fx:id="pullButton" onAction="#pull"/>
             <Button fx:id="deleteButton" onAction="#deleteButton"/>
+            <Button fx:id="refreshButton" onAction="#refreshLists"/>
             <Button fx:id="propertyButton" onAction="#getFileProperty"/>
             <Button fx:id="disconnectButton" onAction="#disconnest"/>
             <Button fx:id="closeAppButton"  onAction="#closeApp"/>
