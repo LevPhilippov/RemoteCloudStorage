@@ -2,6 +2,8 @@ package com.filippov.HibernateUtils;
 
 import com.filippov.AuthData;
 import com.filippov.Factory;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
 import org.hibernate.Transaction;
 import org.hibernate.query.Query;
@@ -15,8 +17,10 @@ import java.util.List;
 
 public class Utils {
 
+    private static final Logger LOGGER = LogManager.getLogger(Utils.class.getCanonicalName());
 
     public static boolean writeNewClientAuthData(AuthData authData) {
+        LOGGER.info("Writing new AuthData {}", authData.getLogin());
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         if (getAuthDataEntityByLoginAndPassword(session, authData.getLogin(), authData.getPassword())!=null) {
             return false;
@@ -34,6 +38,7 @@ public class Utils {
     }
 
     private static AuthDataEntity getAuthDataEntityByLoginAndPassword (Session session, String login_hash, String password_hash) {
+        LOGGER.debug("Requesting AuthDataEntity by login {} and password {}", login_hash, password_hash);
         Query query = session.createQuery("from AuthDataEntity where login=:paramName1 AND password =:paramName2");
         query.setParameter("paramName1", login_hash);
         query.setParameter("paramName2", password_hash);
@@ -45,6 +50,7 @@ public class Utils {
     }
 
     private static AuthDataEntity getLoginID (Session session, String login_hash) {
+        LOGGER.debug("Getting loginID {}", login_hash);
         Query query = session.createQuery("from AuthDataEntity where login=:paramName1");
         query.setParameter("paramName1", login_hash);
         List list = query.list();
@@ -55,6 +61,7 @@ public class Utils {
     }
 
     public static boolean checkAuthData(AuthData authData) {
+        LOGGER.debug("Checking presence of AuthData {}, {}", authData.getLogin(), authData.getPassword());
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getAuthDataEntityByLoginAndPassword(session, authData.getLogin(), authData.getPassword());
         session.close();
@@ -62,7 +69,7 @@ public class Utils {
     }
 
     public static void createFileRecord(String login, String path, String fileName, String pathNameHash, String children) {
-        System.out.println("Запись в БД!");
+        LOGGER.info("Запись в БД! Login: {}\n Path: {}\n FileName: {}", login, path, fileName);
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session,login);
 
@@ -80,22 +87,20 @@ public class Utils {
             session.save(filesEntity);
             tx.commit();
         } else {
-            System.out.println("Запись уже существует!");
+            LOGGER.info("Запись уже существует!");
         }
         session.close();
     }
 
     public static boolean deleteFileRecord(String login, File file) {
-        System.out.println("Удаление из БД!");
+        LOGGER.info("Удаление из БД. Login: {}\n File: {}", login, file.getPath());
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session,login);
-        System.out.println("Login is: " + authDataEntity.getLogin());
         Transaction tx = session.beginTransaction();
-        System.out.println("Удаляю файл: " + file);
         Query query =  session.createQuery("DELETE FilesEntity WHERE id =:paramName1 AND pathNameHash =: paramName2");
         query.setParameter("paramName1", authDataEntity.getId());
         query.setParameter("paramName2", Factory.MD5PathNameHash(file.getParent(), file.getName()));
-        System.out.println("Операция выполнено: " + query.executeUpdate());
+        query.executeUpdate();
         tx.commit();
         session.close();
         return true;
@@ -121,7 +126,6 @@ public class Utils {
         Session session = HibernateSessionFactory.getSessionFactory().openSession();
         AuthDataEntity authDataEntity = getLoginID(session, login);
         Query query = session.createQuery("FROM FilesEntity WHERE id =:paramName1 AND path =:paramName2");
-        System.out.println(path.getPath());
         query.setParameter("paramName2", path.getPath());
         query.setParameter("paramName1", authDataEntity.getId());
         List list = query.list();
@@ -141,7 +145,6 @@ public class Utils {
         AuthDataEntity authDataEntity = getLoginID(session, login);
         Query query = session.createQuery("FROM FilesEntity WHERE id =:paramName1 AND path_name_hash =:paramName2");
         query.setParameter("paramName1", authDataEntity.getId());
-        System.out.println(path);
         query.setParameter("paramName2", Factory.MD5PathNameHash(path.getParent(), path.getName()));
         List <FilesEntity> list = query.list();
         if (list.size()==1) {

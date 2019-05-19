@@ -9,7 +9,7 @@ import org.apache.logging.log4j.Logger;
 
 
 public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
-    Logger LOGGER = LogManager.getLogger(this.getClass().getCanonicalName());
+    private static final Logger LOGGER = LogManager.getLogger(ObjectInboundHandler.class.getCanonicalName());
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {

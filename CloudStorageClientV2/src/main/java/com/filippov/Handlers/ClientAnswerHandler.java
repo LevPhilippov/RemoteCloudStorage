@@ -8,7 +8,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 public class ClientAnswerHandler extends ChannelInboundHandlerAdapter {
-    private final Logger LOGGER = LogManager.getLogger(this.getClass().getCanonicalName());
+    private static final Logger LOGGER = LogManager.getLogger(ClientWrappedFileHandler.class.getCanonicalName());
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {

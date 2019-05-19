@@ -5,6 +5,8 @@ import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -13,6 +15,7 @@ import java.nio.file.Paths;
 public class AuthHandler extends ChannelInboundHandlerAdapter {
     private boolean autorizedClient;
     private String login;
+    private static final Logger LOGGER = LogManager.getLogger(AuthHandler.class.getCanonicalName());
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -35,18 +38,17 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
                     //существующий юзер
                     if(!Utils.checkAuthData((AuthData)msg)){
                         //если логин и пароль не верны
-                        System.out.println("Клиент не авторизован! Отправить сообщение пользователю!");
+                        LOGGER.info("Клиент не авторизован! {}", ((AuthData) msg).getLogin());
                         ServiseMessage.sendMessage(ctx.channel(), "Авторизация невозможна! Неверный логин или пароль!");
                         ReferenceCountUtil.release(msg);
-
                         return;
                     }
                 } else {
-                    System.out.println("Попытка создания нового пользователя!");
+                    LOGGER.info("Попытка создания нового пользователя! {}", ((AuthData) msg).getLogin());
                     //новый юзер
                     if(!Utils.writeNewClientAuthData(authData)) {
                         //если пользователь с такими данными уже зарегистрирован
-                        System.out.println("Пользователь с таким ником уже существует! Отправить сообщение клиенту!");
+                        LOGGER.info("Пользователь с именем {} уже существует!", authData.getLogin());
                         ServiseMessage.sendMessage(ctx.channel(), "Пользователь с таким ником уже существует!");
                         ReferenceCountUtil.release(msg);
 
@@ -59,7 +61,7 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
                 }
                 //если логин и пароль верны или успешно зарегистрировался новый пользователь
                 autorizedClient = true;
-                System.out.println("Клиент авторизован!");
+                LOGGER.info("Клиент {} авторизован!", authData.getLogin());
                 login = ((AuthData)msg).getLogin();
                 ctx.writeAndFlush(new Request().setRequestType(Request.RequestType.ANSWER).setAnswerType(Request.RequestType.AUTH_SUCCESS));
             }

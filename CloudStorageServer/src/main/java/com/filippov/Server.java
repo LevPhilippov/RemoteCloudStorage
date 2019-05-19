@@ -1,23 +1,23 @@
 package com.filippov;
 
-import com.filippov.Handlers.AuthHandler;
-import com.filippov.Handlers.ObjectInboundHandler;
 import com.filippov.Handlers.ServerChannelInitializer;
 import com.filippov.HibernateUtils.HibernateSessionFactory;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.*;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
 public class Server {
     ChannelFuture channelFuture;
     public static final Path rootPath = Paths.get("","ServerStorage").toAbsolutePath();
+    private static final Logger LOGGER = LogManager.getLogger(Server.class.getCanonicalName());
 
     public void run() throws Exception {
-        System.out.println(rootPath.toAbsolutePath().toString());
-
+        LOGGER.info("Базовый путь к папке-хранилищу: " + rootPath.toAbsolutePath().toString());
         EventLoopGroup bossGroup = new NioEventLoopGroup();
         EventLoopGroup workerGroup = new NioEventLoopGroup();
         try {
@@ -30,19 +30,19 @@ public class Server {
             channelFuture = bootstrap.bind("127.0.0.1", 8189).addListener(new ChannelFutureListener() {
                 @Override
                 public void operationComplete(ChannelFuture channelFuture) throws Exception {
-                    System.out.println("Сервер запущен на порту " + channelFuture.channel().localAddress().toString());
+                    LOGGER.warn("Сервер запущен на порту: {}", channelFuture.channel().localAddress().toString());
                 }
             }).sync();
 
             channelFuture.channel().closeFuture().sync();
 
         } catch (InterruptedException e) {
-            e.printStackTrace();
-            workerGroup.shutdownGracefully();
-            bossGroup.shutdownGracefully();
+            LOGGER.error(e.getMessage());
         } finally {
             workerGroup.shutdownGracefully();
             bossGroup.shutdownGracefully();
+            HibernateSessionFactory.shutdown();
+
         }
     }
 }

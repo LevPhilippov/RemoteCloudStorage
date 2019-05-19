@@ -1,5 +1,7 @@
 package com.filippov.HibernateUtils;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.hibernate.SessionFactory;
 import org.hibernate.boot.MetadataSources;
 import org.hibernate.boot.registry.StandardServiceRegistry;
@@ -10,6 +12,7 @@ import java.io.File;
 public class HibernateSessionFactory {
 
     private static SessionFactory sessionFactory = buildSessionFactory();
+    private static final Logger LOGGER = LogManager.getLogger(HibernateSessionFactory.class.getCanonicalName());
 
     protected static SessionFactory buildSessionFactory() {
         // A SessionFactory is set up once for an application!
@@ -22,8 +25,9 @@ public class HibernateSessionFactory {
         catch (Exception e) {
             // The registry would be destroyed by the SessionFactory, but we had trouble building the SessionFactory
             // so destroy it manually.
+            LOGGER.error("The registry would be destroyed by the SessionFactory, but we had trouble building the SessionFactory\n" +
+                    "            // so destroy it manually." );
             StandardServiceRegistryBuilder.destroy( registry );
-
             throw new ExceptionInInitializerError("Initial SessionFactory failed" + e);
         }
         return sessionFactory;
@@ -36,7 +40,8 @@ public class HibernateSessionFactory {
 
     public static void shutdown() {
         // Close caches and connection pools
-        getSessionFactory().close();
+        if(getSessionFactory().isOpen())
+            getSessionFactory().close();
     }
 
 }

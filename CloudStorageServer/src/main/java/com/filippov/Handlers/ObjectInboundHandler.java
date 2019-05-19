@@ -7,19 +7,22 @@ import com.filippov.ServerWrappedFileHandler;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.util.ReferenceCountUtil;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 
 public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
+    private static final Logger LOGGER = LogManager.getLogger(ObjectInboundHandler.class.getCanonicalName());
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
             if (msg instanceof Request) {
-                System.out.println("Получен запрос! Отправляю в обработчик запросов!");
+                LOGGER.debug("Получен запрос! Отправляю в обработчик запросов!");
                 ServerRequestHandler.parse((Request)msg, ctx);
             }
             else {
                 WrappedFile wrappedFile = (WrappedFile) msg;
-                System.out.println("Получен запакованный файл! Отправляю на обработку и сохранение!");
+                LOGGER.debug("Получен запакованный файл! Отправляю на обработку и сохранение!");
                 ServerWrappedFileHandler.parseToSave(wrappedFile);
             }
         } finally {

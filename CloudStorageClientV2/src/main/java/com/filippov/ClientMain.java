@@ -2,17 +2,17 @@ package com.filippov;
 
 import javafx.application.Application;
 import javafx.application.Platform;
-import javafx.event.EventHandler;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
-import javafx.stage.WindowEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.IOException;
 
 public class ClientMain extends Application {
-
+    private static final Logger LOGGER = LogManager.getLogger(ClientMain.class.getCanonicalName());
     private static Parent root;
     private Stage primaryStage;
     public static ClientMain clientMain;
@@ -29,7 +29,7 @@ public class ClientMain extends Application {
             try {
                 root = FXMLLoader.load(getClass().getResource("/sample.fxml"));
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error("Ошибка создания основной сцены!\n" + e.getMessage());
             }
             primaryStage.setTitle("MyCloud");
             primaryStage.setScene(new Scene(root, 800, 600));
@@ -49,7 +49,7 @@ public class ClientMain extends Application {
             try {
                 root = FXMLLoader.load(getClass().getResource("/log.fxml"));
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error("Ошибка создания лог-сцены!\n" + e.getMessage());
             }
             primaryStage.setTitle("MyCloud");
             primaryStage.setScene(new Scene(root, 400, 300));
@@ -72,8 +72,6 @@ public class ClientMain extends Application {
             Platform.runLater(runnable);
         }
     }
-
-
 
     public static void main(String[] args) {
         launch(args);

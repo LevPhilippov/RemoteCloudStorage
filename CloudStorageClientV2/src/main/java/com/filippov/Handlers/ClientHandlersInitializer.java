@@ -2,7 +2,6 @@ package com.filippov.Handlers;
 
 import com.filippov.ClientWrappedFileHandler;
 import com.filippov.Network;
-import io.netty.channel.Channel;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.handler.codec.serialization.ClassResolvers;
@@ -20,7 +19,6 @@ public class ClientHandlersInitializer  extends ChannelInitializer <SocketChanne
         // Configure SSL.
         final SslContext sslCtx = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
         //SSL
-
         socketChannel.pipeline().addLast(
                 sslCtx.newHandler(socketChannel.alloc(), Network.HOST, Network.PEER_PORT),
                 new LoggingHandler("HeadHandler", LogLevel.TRACE),

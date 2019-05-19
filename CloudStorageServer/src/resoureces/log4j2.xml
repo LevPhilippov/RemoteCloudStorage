@@ -23,6 +23,20 @@
             <AppenderRef ref="console"></AppenderRef>\
             <AppenderRef ref="file"></AppenderRef>
         </Logger>
+        <Logger name="com.filippov.HibernateUtils.Utils" level="info" additivity="false">
+            <AppenderRef ref="console"></AppenderRef>\
+            <AppenderRef ref="file"></AppenderRef>
+        </Logger>
+
+        <Logger name="com.filippov.ServerWrappedFileHandler" level="info" additivity="false">
+            <AppenderRef ref="console"></AppenderRef>\
+            <AppenderRef ref="file"></AppenderRef>
+        </Logger>
+
+        <Logger name="com.filippov.ServerRequestHandler" level="info" additivity="false">
+            <AppenderRef ref="console"></AppenderRef>\
+            <AppenderRef ref="file"></AppenderRef>
+        </Logger>
 
         <Root level="error">
             <AppenderRef ref="console" />

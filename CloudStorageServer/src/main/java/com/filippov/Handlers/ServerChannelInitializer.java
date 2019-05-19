@@ -11,12 +11,15 @@ import io.netty.handler.logging.LoggingHandler;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.SelfSignedCertificate;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import javax.net.ssl.SSLException;
 import java.security.cert.CertificateException;
 
 public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> {
     private SslContext sslCtx;
+    private static final Logger LOGGER = LogManager.getLogger(ServerChannelInitializer.class.getCanonicalName());
 
     @Override
     protected void initChannel(SocketChannel socketChannel) throws Exception {
@@ -33,15 +36,14 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
     private void setupSSL() {
         try {
             // Configure SSL
-            SelfSignedCertificate ssc = new SelfSignedCertificate();  //-What is it?
+            SelfSignedCertificate ssc = new SelfSignedCertificate();
             sslCtx = SslContextBuilder.forServer(ssc.certificate(), ssc.privateKey()).build();
             //SSL
         } catch (SSLException e) {
-            e.printStackTrace();
+            LOGGER.error("Не получилось создать sslContext!" + e.getMessage());
         } catch (CertificateException e) {
-            e.printStackTrace();
+            LOGGER.error("Ошибка SelfSignedCertificate!" + e.getMessage());
         }
-
     }
 
 }

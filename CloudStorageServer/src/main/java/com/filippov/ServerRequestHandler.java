@@ -1,10 +1,10 @@
 package com.filippov;
 
-import com.filippov.HibernateUtils.AuthDataEntity;
 import com.filippov.HibernateUtils.FilesEntity;
 import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.ChannelHandlerContext;
-import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -15,23 +15,26 @@ import java.util.List;
 
 public class ServerRequestHandler{
 
-    public static void parse(Request request, ChannelHandlerContext ctx) {
+    private static final Logger LOGGER = LogManager.getLogger(ServerRequestHandler.class.getCanonicalName());
 
+    public static void parse(Request request, ChannelHandlerContext ctx) {
         switch (request.getRequestType()){
             case FILELIST: sendFileList(request,ctx);
                 break;
             case GETFILES: {
-                System.out.println("Получен запрос на отправку файлов: " + request.getFileList());
+                LOGGER.debug("Получен запрос на отправку файлов: {} ", request.getFileList());
                 for (File file : request.getFileList()) {
                     ServerWrappedFileHandler.parseToSend(request.getLogin(), file, ctx.channel(), null);
                 }
                 break;
             }
             case DELETEFILES: {
+                LOGGER.debug("Получен запрос на удаление файлов: {}", request.getFileList());
                 deleteFiles(request.getLogin(), request.getFileList());
                 break;
             }
             case CREATE_FOLDER: {
+                LOGGER.debug("Получен запрос на создание папки: {}", request.getServerPath().getPath());
                 String folderName = request.getServerPath().getName();
                 String serverPath = request.getServerPath().getParent();
                 String pathNameHash = Factory.MD5PathNameHash(serverPath, folderName);
@@ -43,29 +46,27 @@ public class ServerRequestHandler{
                 break;
             }
             case PROPERTY: {
-                System.out.println("Запрос на свойства файла.");
+                LOGGER.debug("Получен запрос на свойства файла: {}", request.getServerPath().getPath());
                 sendProperty(request, ctx);
                 break;
             }
             default:
-                System.out.println("Неизвестный тип Request");
+                LOGGER.error("Неизвестный тип Request: {}", request.getRequestType());
                 break;
         }
     }
 
     private static void deleteFiles(String login, List<File> fileList) {
-        System.out.println("Удаление файлов! " + fileList);
+        LOGGER.trace("Зашли в метод удаления файлов: {}", fileList);
         //проверить наличие записи в базе и наличие файла на диске, затем удалить файл, затем удалить запись в базе.
         for (File file : fileList) {
             //если это папка то работаем как с папкой
             if(Utils.isThatDirectory(login, file)) {
-                System.out.println("Удаляем папку c содержимым!");
+                LOGGER.trace("Удаляем папку c содержимым!");
                 //тут нужен рекурсивный метод
                 List <File> fileList1 = Utils.fileList(login, file);
-                System.out.println("Удаляем следующие файлы : " + fileList1);
+                LOGGER.trace("Удаляем следующие файлы : {} ", fileList1);
                 deleteFiles(login, fileList1);
-//                System.out.println("Удалено обьектов " + Utils.deleteFolders(login, file));
-                // работает не совсем корректно - не хватило времени дописать!
                 Utils.deleteFileRecord(login, file);
                 continue;
             }
@@ -81,7 +82,7 @@ public class ServerRequestHandler{
                     //удаляем запись в БД
                     Utils.deleteFileRecord(login, file);
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    LOGGER.error("Ошибка удаления файлов!\n" + e.getMessage() );
                 }
             }
         }
@@ -94,9 +95,9 @@ public class ServerRequestHandler{
     private static void sendFileList(Request request, ChannelHandlerContext ctx) {
         //проверка - директория или файл (у директории есть children)
         if(Utils.isThatDirectory(request.getLogin(), request.getServerPath())){
-            System.out.println("Запрос на список файлов в каталоге: " + request.getServerPath());
+            LOGGER.debug("Запрос на список файлов в каталоге: {}", request.getServerPath());
             List<File> fileList = Utils.fileList(request.getLogin(), request.getServerPath());
-            System.out.println("Отправляю список файлов в каталоге " + request.getServerPath().toString() + ": " + fileList.toString());
+            LOGGER.debug("Отправляю список файлов в каталоге {} : {} ", request.getServerPath().toString(), fileList.toString());
             ctx.writeAndFlush(request.setRequestType(Request.RequestType.ANSWER)
                     .setAnswerType(Request.RequestType.FILELIST)
                     .setFileList(fileList)
@@ -104,7 +105,7 @@ public class ServerRequestHandler{
             return;
         }
             ServiseMessage.sendMessage(ctx.channel(), "Запрошенная директория является файлом!");
-            System.out.println("Запрошенная директория является файлом! Здесь могла быть ваша реклама!");
+            LOGGER.debug("Запрошенная директория является файлом!");
     }
 
     private static void sendProperty(Request request, ChannelHandlerContext ctx) {
