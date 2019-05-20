@@ -51,7 +51,6 @@ public class AuthHandler extends ChannelInboundHandlerAdapter {
                         LOGGER.info("Пользователь с именем {} уже существует!", authData.getLogin());
                         ServiseMessage.sendMessage(ctx.channel(), "Пользователь с таким ником уже существует!");
                         ReferenceCountUtil.release(msg);
-
                         return;
                     }
                 }

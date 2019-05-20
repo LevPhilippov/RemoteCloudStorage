@@ -15,6 +15,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 import java.util.List;
 
 public class ServerWrappedFileHandler {
@@ -80,8 +81,7 @@ public class ServerWrappedFileHandler {
     public static void wrapAndWriteFile(Path serverPath, Path targetPath, String fileName, Channel channel) {
         LOGGER.debug("Зашли в метод отправки файлов.\nФайл {} будет записан в канал и размещен в папке {}\n", fileName, targetPath.toString());
         try {
-            byte[] bytes = null;
-            bytes = Files.readAllBytes(serverPath);
+            byte[] bytes = Files.readAllBytes(serverPath);
 
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
@@ -119,7 +119,12 @@ public class ServerWrappedFileHandler {
             File file = serverPath.toFile();
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
-
+                    if(chunkCounter==chunks){
+                        //пля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                        byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
+                        LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
+                                    ,chunkCounter, chunks,byteBuffer.length,bytesRed);
+                    }
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,
                             fileName, targetPath.toFile());
@@ -157,7 +162,7 @@ public class ServerWrappedFileHandler {
     }
 
     private static void saveChunk(WrappedFile wrappedFile) {
-        LOGGER.debug("Запись чанка № {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
+        LOGGER.info("Запись чанка № {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         String hash_file_name = Factory.MD5PathNameHash(wrappedFile.getTargetPath().getPath(),wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
@@ -184,7 +189,12 @@ public class ServerWrappedFileHandler {
                 //если ни то, ни другое
                 Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
             } catch (IOException e) {
-                LOGGER.error("Не удалось записать файл!\n" + e.getMessage());
+                LOGGER.error("Ошибка записи чанка {}!\n", wrappedFile.getChunkNumber());
+                LOGGER.error(e.getMessage());
+                //TODO: При попытке записи большого файла процесс пытается писать файл в несколько потоков,
+                // при этом появляется ошибка записи в файл (т.к. файл занят другим потоком)
+                // в результате байты перемешиваются.
+                // В идеале запись таких файлов нужно помещать в очередь ArrayBlockingQueue?
             }
     }
 

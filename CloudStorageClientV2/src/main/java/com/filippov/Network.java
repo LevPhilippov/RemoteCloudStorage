@@ -59,7 +59,7 @@ public class Network{
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
                     LOGGER.info("{}: Thread interruption exeption!", login);
-                    e.printStackTrace();
+                    LOGGER.error(e.getMessage());
                 }
                 finally {
                     shutdown();
@@ -96,6 +96,7 @@ public class Network{
      * @param os  List String-ключей для ClientMap
      * @param requestType  команда для обработки списка файлов
      * */
+
     public void filesHandler(ObservableList<String> os, Request.RequestType requestType) {
             os.stream().map(pathHolder.getClientPathMap()::get).forEach((path -> {
                 if (Files.exists(path)) {
@@ -103,7 +104,7 @@ public class Network{
                         Files.walkFileTree(path, new MyFileVisitor(cf.channel(), requestType)
                         );
                     } catch (IOException e) {
-                        e.printStackTrace();
+                        LOGGER.error(e.getMessage());
                     }
                 }
             }));
@@ -132,6 +133,7 @@ public class Network{
                 .setRequestType(requestType)
                 .setFileList(filesList));
     }
+
     public void sendPropertyRequest(String key) {
         File file = pathHolder.getServerPathMap().get(key).toFile();
         cf.channel().writeAndFlush(new Request()

@@ -13,6 +13,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
 
 public class ClientWrappedFileHandler{
 
@@ -43,7 +44,7 @@ public class ClientWrappedFileHandler{
     }
 
     private static void saveChunk(WrappedFile wrappedFile) {
-        LOGGER.trace("Запись чанка");
+        LOGGER.info("Запись чанка {} из {}", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         Path targetPath = getlocalPath(wrappedFile);
 
         try {
@@ -53,7 +54,6 @@ public class ClientWrappedFileHandler{
                 Files.createFile(targetPath);
                 Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.WRITE);
                 Controller.controller.setPullProgress(targetPath.getFileName().toString(), 0L);
-
                 return;
             } //если файл уже существует он будет перезаписан
             else if (Files.exists(targetPath) && wrappedFile.getChunkNumber()==1) {
@@ -67,8 +67,9 @@ public class ClientWrappedFileHandler{
             Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
             Controller.controller.setPullProgress(targetPath.getFileName().toString(), wrappedFile.getChunkNumber()*100/wrappedFile.getChunkslsInFile());
         } catch (IOException e) {
-            Network.messageService.setSingleServiseMessage("Не удалось записать файл!");
-            LOGGER.error("Не удалось записать файл!\n" + e.getMessage());
+            Network.messageService.setSingleServiseMessage("При записи файла возникла ошибка!");
+            LOGGER.error("Ошибка записи чанка {}!\n", wrappedFile.getChunkNumber());
+            LOGGER.error(e.getMessage());
         } finally {
             Controller.controller.refreshLocalFilesList();
         }
@@ -115,7 +116,7 @@ public class ClientWrappedFileHandler{
             targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
                     Network.getInstance().getPathHolder().getClientPath().toString(),
                     wrappedFile.getFileName());
-            LOGGER.info("Файл будет записан по адресу: {} ", targetPath);
+            LOGGER.debug("Файл будет записан по адресу: {} ", targetPath);
         } else {
             targetPath = Paths.get(PathHolder.baseLocalPath.toString(),
                     Network.getInstance().getPathHolder().getClientPath().toString(),
@@ -160,7 +161,7 @@ public class ClientWrappedFileHandler{
                     chunks = Files.size(localPath)/byteBufferSize;
                 }
                 else {
-                    chunks = Math.round(Files.size(localPath)/byteBufferSize)+1;
+                    chunks = (Files.size(localPath)/byteBufferSize)+1;
                 }
             } catch (IOException e) {
                 LOGGER.error("Файл не найден!\n" + e.getMessage());
@@ -170,6 +171,12 @@ public class ClientWrappedFileHandler{
             File file = localPath.toFile();
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
+                    if(chunkCounter==chunks){
+                        //пля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                        byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
+                        LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
+                                ,chunkCounter, chunks,byteBuffer.length,bytesRed);
+                    }
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,
                             localPath.getFileName().toString(), targetPath.toFile());
@@ -180,7 +187,7 @@ public class ClientWrappedFileHandler{
                     Controller.controller.setPushProgress(file.getName(), 0L);
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                         if(channelFuture.isSuccess()){
-                            LOGGER.info("Записан чанк {} из {}", finalChunkCounter, finalChunks);
+                            LOGGER.warn("Записан чанк {} из {}", finalChunkCounter, finalChunks);
                             //уведомление о прогрессе отправки летит в сервисную область.
                             Controller.controller.setPushProgress(file.getName(), finalChunkCounter*100/finalChunks);
                         }

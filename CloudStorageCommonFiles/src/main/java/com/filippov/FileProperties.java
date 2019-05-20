@@ -35,11 +35,11 @@ public class FileProperties implements Serializable {
                     result = Long.toString(fileSize) + "bytes";
                 }
                 else if (fileSize>1024 && fileSize<1024*1024) {
-                    result = Long.toString(fileSize/1024) + "Kbytes";
+                    result = Double.toString(fileSize.doubleValue()/1024) + "Kbytes";
                 }
                 else
                     {
-                        Double doubleFileSize = Double.longBitsToDouble(fileSize);
+                        Double doubleFileSize = fileSize.doubleValue();
                         result  = Double.toString(doubleFileSize/(1024*1024)) + "Mbytes";
                 }
             } catch (IOException e) {
