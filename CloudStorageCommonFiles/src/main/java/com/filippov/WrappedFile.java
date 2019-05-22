@@ -9,13 +9,13 @@ import java.io.*;
 @Setter
 public class WrappedFile implements Serializable {
 
-    private TypeEnum typeEnum;
-    private byte[] bytes;
-    private long chunkNumber;
-    private long chunkslsInFile;
-    private String fileName;
-    private File localPath;
-    private File targetPath;
+    private volatile TypeEnum typeEnum;
+    private volatile byte[] bytes;
+    private volatile long chunkNumber;
+    private volatile long chunkslsInFile;
+    private volatile String fileName;
+    private volatile File localPath;
+    private volatile File targetPath;
     //Не передавать login по каналу! Использовать только на сервере! Дописывать в AuthHandlere-e.
     private String login;
 

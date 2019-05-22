@@ -32,7 +32,7 @@ public class Network{
 
     public void startNetwork(AuthData authData, LogController logController) {
 
-        bossGroup = new NioEventLoopGroup();
+        bossGroup = new NioEventLoopGroup(1);
         bootstrap = new Bootstrap();
         networkThread = new Thread(new Runnable() {
             @Override

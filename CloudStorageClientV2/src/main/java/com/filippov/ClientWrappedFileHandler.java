@@ -2,6 +2,8 @@ package com.filippov;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
+import io.netty.channel.ChannelProgressiveFuture;
+import io.netty.channel.ChannelProgressiveFutureListener;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -14,12 +16,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ClientWrappedFileHandler{
 
-    public static int byteBufferSize = 1024*1024;
+    public static int byteBufferSize = 1024*1024*5;
     private static final Logger LOGGER = LogManager.getLogger(ClientWrappedFileHandler.class.getCanonicalName());
-
+    private static ReentrantLock locker = new ReentrantLock();
     public static void parseToSave(WrappedFile wrappedFile) {
         switch (wrappedFile.getTypeEnum()) {
             case FILE: saveFile(wrappedFile); break;
@@ -44,9 +47,9 @@ public class ClientWrappedFileHandler{
     }
 
     private static void saveChunk(WrappedFile wrappedFile) {
-        LOGGER.info("Запись чанка {} из {}", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
+        locker.lock();
+        LOGGER.debug("Запись чанка {} из {}", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         Path targetPath = getlocalPath(wrappedFile);
-
         try {
             //если такого файла не существует
             if(!Files.exists(targetPath)){
@@ -71,8 +74,10 @@ public class ClientWrappedFileHandler{
             LOGGER.error("Ошибка записи чанка {}!\n", wrappedFile.getChunkNumber());
             LOGGER.error(e.getMessage());
         } finally {
-            Controller.controller.refreshLocalFilesList();
+            if(wrappedFile.getChunkNumber()==wrappedFile.getChunkslsInFile())
+                Controller.controller.refreshLocalFilesList();
         }
+        locker.unlock();
     }
 
     private static void showError() {
@@ -148,11 +153,8 @@ public class ClientWrappedFileHandler{
 
 
     public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
-        LOGGER.trace("Указанный путь к файлу: {}", localPath);
-        LOGGER.trace("Имя файла: {} ", localPath.getFileName());
-        LOGGER.trace("Указанный удаленный путь: {}", targetPath);
+        LOGGER.debug("Зашли в метод отправки чанк-файлов!\nУказанный путь к файлу: {}\nИмя файла: {}\nУказанный удаленный путь: {}", localPath, localPath.getFileName(), targetPath);
         Network.messageService.setSingleServiseMessage("Записываем файл: " + localPath.getFileName());
-
         if(Files.exists(localPath)) {
             long chunkCounter = 1;
             long chunks=0;
@@ -162,6 +164,7 @@ public class ClientWrappedFileHandler{
                 }
                 else {
                     chunks = (Files.size(localPath)/byteBufferSize)+1;
+
                 }
             } catch (IOException e) {
                 LOGGER.error("Файл не найден!\n" + e.getMessage());
@@ -172,10 +175,10 @@ public class ClientWrappedFileHandler{
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
                     if(chunkCounter==chunks){
-                        //пля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                        //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
                         byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
                         LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
-                                ,chunkCounter, chunks,byteBuffer.length,bytesRed);
+                                ,chunkCounter, chunks,bytesRed, byteBuffer.length);
                     }
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,

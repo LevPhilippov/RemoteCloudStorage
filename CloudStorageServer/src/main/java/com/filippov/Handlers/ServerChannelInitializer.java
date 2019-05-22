@@ -28,7 +28,7 @@ public class ServerChannelInitializer extends ChannelInitializer<SocketChannel> 
                     sslCtx.newHandler(socketChannel.alloc()),
                     new LoggingHandler("HeadLogger", LogLevel.TRACE),
                     new ObjectEncoder(),
-                    new ObjectDecoder(ServerWrappedFileHandler.byteBufferSize + 1024 * 1024, ClassResolvers.cacheDisabled(null)),
+                    new ObjectDecoder(ServerWrappedFileHandler.byteBufferSize + 1024*1024, ClassResolvers.softCachingConcurrentResolver(null)),
                     new LoggingHandler("AuthLogger", LogLevel.DEBUG),
                     new AuthHandler(),
                     new LoggingHandler("ObjectLogger", LogLevel.DEBUG),

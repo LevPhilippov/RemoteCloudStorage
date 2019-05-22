@@ -10,9 +10,17 @@ import io.netty.util.ReferenceCountUtil;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 
 public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LogManager.getLogger(ObjectInboundHandler.class.getCanonicalName());
+    private ReentrantLock locker;
+
+    public ObjectInboundHandler(){
+        locker = new ReentrantLock();
+    }
+
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
         try {
@@ -23,7 +31,7 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
             else {
                 WrappedFile wrappedFile = (WrappedFile) msg;
                 LOGGER.debug("Получен запакованный файл! Отправляю на обработку и сохранение!");
-                ServerWrappedFileHandler.parseToSave(wrappedFile);
+                ServerWrappedFileHandler.parseToSave(wrappedFile, locker);
             }
         } finally {
             ReferenceCountUtil.release(msg);

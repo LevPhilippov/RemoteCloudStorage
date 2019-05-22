@@ -3,7 +3,6 @@ package com.filippov;
 import com.filippov.HibernateUtils.Utils;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
-import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,16 +16,16 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class ServerWrappedFileHandler {
 
-    public static int byteBufferSize = 1024*1024;
+    public static int byteBufferSize = 1024*1024*5;
     private static final Logger LOGGER = LogManager.getLogger(ServerWrappedFileHandler.class.getCanonicalName());
-
-    public static void parseToSave(WrappedFile wrappedFile) {
+    public static void parseToSave(WrappedFile wrappedFile, ReentrantLock locker) {
         switch (wrappedFile.getTypeEnum()) {
             case FILE: saveFile(wrappedFile); break;
-            case CHUNKED: saveChunk(wrappedFile); break;
+            case CHUNKED: saveChunk(wrappedFile, locker); break;
             default: showError(); break;
         }
     }
@@ -97,30 +96,29 @@ public class ServerWrappedFileHandler {
         }
     }
 
-    public static void wrapAndWriteChunk(Path serverPath, Path targetPath, String fileName, Channel channel) {
-        LOGGER.debug("Зашли в метод отправки чанк-файлов!\nУказанный путь к файлу: {}\nИмя файла: {}\nУказанный удаленный путь: {}"
-                ,serverPath.toString(),fileName,targetPath.toString());
-
-        if(Files.exists(serverPath)) {
+    public static void wrapAndWriteChunk(Path localPath, Path targetPath, String fileName, Channel channel) {
+        LOGGER.debug("Зашли в метод отправки чанк-файлов!\nУказанный путь к файлу: {}\nИмя файла: {}\nУказанный удаленный путь: {}",localPath.toString(),fileName,targetPath.toString());
+        if(Files.exists(localPath)) {
             long chunkCounter = 1;
             long chunks=0;
             try {
-                if(Files.size(serverPath)%byteBufferSize == 0){
-                    chunks = Files.size(serverPath)/byteBufferSize;
+                if(Files.size(localPath)%byteBufferSize == 0){
+                    chunks = Files.size(localPath)/byteBufferSize;
                 }
                 else {
-                    chunks = Math.round(Files.size(serverPath)/byteBufferSize)+1;
+                    chunks = (Files.size(localPath)/byteBufferSize)+1;
                 }
             } catch (IOException e) {
                 LOGGER.error("Ошибка записи чанков!" + e.getMessage());
             }
+
             byte[] byteBuffer = new byte[byteBufferSize];
             int bytesRed=0;
-            File file = serverPath.toFile();
+            File file = localPath.toFile();
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
                     if(chunkCounter==chunks){
-                        //пля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                        //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
                         byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
                         LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
                                     ,chunkCounter, chunks,byteBuffer.length,bytesRed);
@@ -128,12 +126,13 @@ public class ServerWrappedFileHandler {
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,
                             fileName, targetPath.toFile());
-
+                    ///т.к. в анонимном классе Java8 хочет effectively final - переменные
                     long finalChunkCounter = chunkCounter;
                     long finalChunks = chunks;
+                    ///
                     channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                         if(channelFuture.isSuccess()){
-                            LOGGER.debug("Writing complete! Чанк {} из {}", finalChunkCounter, finalChunks);
+                            LOGGER.info("Writing complete! Чанк {} из {}", finalChunkCounter, finalChunks);
                         }
                     });
                     chunkCounter++;
@@ -161,43 +160,40 @@ public class ServerWrappedFileHandler {
         }
     }
 
-    private static void saveChunk(WrappedFile wrappedFile) {
-        LOGGER.info("Запись чанка № {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
+    private static void saveChunk(WrappedFile wrappedFile, ReentrantLock locker) {
+        locker.lock();
+        LOGGER.debug("Запись чанка № {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         String hash_file_name = Factory.MD5PathNameHash(wrappedFile.getTargetPath().getPath(),wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
 //                если файла по этому адресу еще не существует
                 if(!Files.exists(path)) {
-                    LOGGER.debug("Записей не обнаружено! Создаю директории и пишу первый чанк!");
-                    Files.createFile(path);
-                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                        LOGGER.info("Записей не обнаружено! Создаю директории и пишу первый чанк!");
+                        Files.createFile(path);
+                        Files.write(path,wrappedFile.getBytes(), StandardOpenOption.WRITE);
                     return;
                 } else if (Files.exists(path) && wrappedFile.getChunkNumber()==1) {
                     //если запись существует, и передается чанк с номером 1 - значит файл необходимо перезаписать
-                    LOGGER.debug("Запись обнаружена при этом записывается первый чанк! Удаляю старый файл и записываю первый чанк!");
-                    Files.delete(path);
-                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
-                }
+                    LOGGER.info("Запись обнаружена при этом записывается первый чанк! Удаляю старый файл и записываю первый чанк!");
+                        Files.delete(path);
+                        Files.createFile(path);
+                        Files.write(path, wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                        return;
+                    }
                 //если это последний чанк файла вносим запись в базу данных
-                if(wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
-                    LOGGER.debug("Запись обнаружена, пишется последний чанк {}", wrappedFile.getChunkNumber());
-                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
-                    Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
-                    return;
-                }
-                LOGGER.debug("Запись обнаружена, пишется чанк {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
-                //если ни то, ни другое
-                Files.write(path,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+                    LOGGER.info("Запись обнаружена, пишется чанк {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
+                    //если ни то, ни другое
+                    Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
+
+                    if(wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
+                        Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+                    }
             } catch (IOException e) {
                 LOGGER.error("Ошибка записи чанка {}!\n", wrappedFile.getChunkNumber());
                 LOGGER.error(e.getMessage());
-                //TODO: При попытке записи большого файла процесс пытается писать файл в несколько потоков,
-                // при этом появляется ошибка записи в файл (т.к. файл занят другим потоком)
-                // в результате байты перемешиваются.
-                // В идеале запись таких файлов нужно помещать в очередь ArrayBlockingQueue?
             }
+            locker.unlock();
     }
-
     private static void showError() {
         LOGGER.error("Неизвестная команда или данные повреждены!");
     }
