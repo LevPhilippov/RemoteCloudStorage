@@ -1,6 +1,7 @@
 # RemoteCloudStorage
 Учебный проект для geekbrains. 
 
+Сборка находится в каталоге RemoteCloudStoragePackaged
 Состав проекта: 
 CloudStorageServer - серверная часть приложения без графического интерфейса. 
 Логгирование производится в папку serverLogs файл ServerLogfile.log (создается в каталоге, в котором расположен файл при старте приложения).
