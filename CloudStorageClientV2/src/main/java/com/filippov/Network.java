@@ -55,7 +55,6 @@ public class Network{
                         }
 
                     }).sync();
-
                     cf.channel().closeFuture().sync();
                 } catch (InterruptedException e) {
                     LOGGER.info("{}: Thread interruption exeption!", login);
@@ -108,7 +107,12 @@ public class Network{
                     }
                 }
             }));
-        requestFilesListFromServer(getPathHolder().getServerPath());
+        bossGroup.execute(new Runnable() {
+                @Override
+                public void run() {
+                    requestFilesListFromServer(getPathHolder().getServerPath());
+                }
+            });
     }
 
     /**
@@ -146,5 +150,9 @@ public class Network{
 
     public void setLogin(String login) {
         this.login = login;
+    }
+
+    public EventLoopGroup getBossGroup() {
+        return bossGroup;
     }
 }

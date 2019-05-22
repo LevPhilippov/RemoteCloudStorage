@@ -39,8 +39,8 @@ public class Factory {
     }
 
     public static String MD5FileHash(Path path) {
-        try {
-            return DigestUtils.md5Hex(new FileInputStream(path.toFile()));
+        try(FileInputStream fis = new FileInputStream(path.toFile())) {
+            return DigestUtils.md5Hex(fis);
         } catch (IOException e) {
             System.out.println("File not found!");
         }

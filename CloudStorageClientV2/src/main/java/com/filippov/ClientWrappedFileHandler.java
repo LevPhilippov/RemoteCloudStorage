@@ -2,6 +2,7 @@ package com.filippov;
 
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFutureListener;
+import javassist.bytecode.analysis.Executor;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -46,9 +47,9 @@ public class ClientWrappedFileHandler{
     }
 
     private static void saveChunk(WrappedFile wrappedFile) {
-        locker.lock();
         LOGGER.debug("Запись чанка {} из {}", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         Path targetPath = getlocalPath(wrappedFile);
+        locker.lock();
         try {
             //если такого файла не существует
             if(!Files.exists(targetPath)){
@@ -67,6 +68,7 @@ public class ClientWrappedFileHandler{
             }
             //если ни то ни другое
             Files.write(targetPath,wrappedFile.getBytes(), StandardOpenOption.APPEND);
+            locker.unlock();
             Controller.controller.setPullProgress(targetPath.getFileName().toString(), wrappedFile.getChunkNumber()*100/wrappedFile.getChunkslsInFile());
         } catch (IOException e) {
             Network.messageService.setSingleServiseMessage("При записи файла возникла ошибка!");
@@ -78,7 +80,6 @@ public class ClientWrappedFileHandler{
                 LOGGER.error("MD5 comparision: " + wrappedFile.getMD5Hash().equals(Factory.MD5FileHash(targetPath)));
             }
         }
-        locker.unlock();
     }
 
     private static void showError() {
@@ -132,80 +133,91 @@ public class ClientWrappedFileHandler{
     }
 
     public static void wrapAndWriteFile(Path localPath, Path serverPath, Channel channel) {
-        System.out.println(Factory.MD5FileHash(localPath));
-        LOGGER.info("Файл {} будет записан в канал и размещен в папке {}\n ", localPath.getFileName(), serverPath);
-        try {
-            byte[] bytes = Files.readAllBytes(localPath);
-            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
-                    1,1,
-                    localPath.getFileName().toString(),serverPath.toFile());
-            wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
-//            System.out.println("RelativePath у собранного файла: " + wrappedFile.getTargetPath());
-            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                if(channelFuture.isSuccess()){
-                    //уведомление о прогрессе отправки летит в сервисную область.
-                    Controller.controller.setPushProgress(localPath.getFileName().toString(), 100L);
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                System.out.println(Factory.MD5FileHash(localPath));
+                LOGGER.info("Файл {} будет записан в канал и размещен в папке {}\n ", localPath.getFileName(), serverPath);
+                try {
+                    byte[] bytes = Files.readAllBytes(localPath);
+                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
+                            1,1,
+                            localPath.getFileName().toString(),serverPath.toFile());
+                    wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
+                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                        if(channelFuture.isSuccess()){
+                            //уведомление о прогрессе отправки летит в сервисную область.
+                            Controller.controller.setPushProgress(localPath.getFileName().toString(), 100L);
+                        }
+                    });
+                } catch (IOException a) {
+                    Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
+                    LOGGER.error("Ошибка записи!\n" + a.getMessage());
                 }
-            });
-        } catch (IOException a) {
-            Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!");
-            LOGGER.error("Ошибка записи!\n" + a.getMessage());
-        }
+            }
+        };
+        Network.getInstance().getBossGroup().execute(runnable);
     }
 
     public static void wrapAndWriteChunk(Path localPath, Path targetPath, Channel channel) {
-        LOGGER.debug("Зашли в метод отправки чанк-файлов!\nУказанный путь к файлу: {}\nИмя файла: {}\nУказанный удаленный путь: {}", localPath, localPath.getFileName(), targetPath);
-        Network.messageService.setSingleServiseMessage("Записываем файл: " + localPath.getFileName());
-        if(Files.exists(localPath)) {
-            long chunkCounter = 1;
-            long chunks=0;
-            try {
-                if(Files.size(localPath)%byteBufferSize == 0){
-                    chunks = Files.size(localPath)/byteBufferSize;
-                }
-                else {
-                    chunks = (Files.size(localPath)/byteBufferSize)+1;
-
-                }
-            } catch (IOException e) {
-                LOGGER.error("Файл не найден!\n" + e.getMessage());
-            }
-            byte[] byteBuffer = new byte[byteBufferSize];
-            int bytesRed=0;
-            File file = localPath.toFile();
-            try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
-                while ((bytesRed=bis.read(byteBuffer))>0) {
-
-                    WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
-                            byteBuffer, chunkCounter, chunks,
-                            localPath.getFileName().toString(), targetPath.toFile());
-
-                    //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
-                    if(chunkCounter==chunks){
-                        byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
-                        LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
-                                ,chunkCounter, chunks,bytesRed, byteBuffer.length);
-                        wrappedFile.setBytes(byteBuffer);
-                        wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
-                    }
-                    ///т.к. в анонимном классе Java8 хочет effectively final - переменные
-                    long finalChunkCounter = chunkCounter;
-                    long finalChunks = chunks;
-                    ///
-                    Controller.controller.setPushProgress(file.getName(), 0L);
-                    channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
-                        if(channelFuture.isSuccess()){
-                            LOGGER.warn("Записан чанк {} из {}", finalChunkCounter, finalChunks);
-                            //уведомление о прогрессе отправки летит в сервисную область.
-                            Controller.controller.setPushProgress(file.getName(), finalChunkCounter*100/finalChunks);
+        Runnable runnable = new Runnable() {
+            @Override
+            public void run() {
+                LOGGER.debug("Зашли в метод отправки чанк-файлов!\nУказанный путь к файлу: {}\nИмя файла: {}\nУказанный удаленный путь: {}", localPath, localPath.getFileName(), targetPath);
+                Network.messageService.setSingleServiseMessage("Записываем файл: " + localPath.getFileName());
+                if(Files.exists(localPath)) {
+                    long chunkCounter = 1;
+                    long chunks=0;
+                    try {
+                        if(Files.size(localPath)%byteBufferSize == 0){
+                            chunks = Files.size(localPath)/byteBufferSize;
                         }
-                    });
-                    chunkCounter++;
+                        else {
+                            chunks = (Files.size(localPath)/byteBufferSize)+1;
+
+                        }
+                    } catch (IOException e) {
+                        LOGGER.error("Файл не найден!\n" + e.getMessage());
+                    }
+                    byte[] byteBuffer = new byte[byteBufferSize];
+                    int bytesRed=0;
+                    File file = localPath.toFile();
+                    try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
+                        while ((bytesRed=bis.read(byteBuffer))>0) {
+
+                            WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
+                                    byteBuffer, chunkCounter, chunks,
+                                    localPath.getFileName().toString(), targetPath.toFile());
+
+                            //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                            if(chunkCounter==chunks){
+                                byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
+                                LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
+                                        ,chunkCounter, chunks,bytesRed, byteBuffer.length);
+                                wrappedFile.setBytes(byteBuffer);
+                                wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
+                            }
+                            ///т.к. в анонимном классе Java8 хочет effectively final - переменные
+                            long finalChunkCounter = chunkCounter;
+                            long finalChunks = chunks;
+                            ///
+                            Controller.controller.setPushProgress(file.getName(), 0L);
+                            channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
+                                if(channelFuture.isSuccess()){
+                                    LOGGER.warn("Записан чанк {} из {}", finalChunkCounter, finalChunks);
+                                    //уведомление о прогрессе отправки летит в сервисную область.
+                                    Controller.controller.setPushProgress(file.getName(), finalChunkCounter*100/finalChunks);
+                                }
+                            });
+                            chunkCounter++;
+                        }
+                    } catch (IOException e) {
+                        LOGGER.error(e.getMessage());
+                        Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!\n" + e.getMessage());
+                    }
                 }
-            } catch (IOException e) {
-                LOGGER.error(e.getMessage());
-                Network.messageService.setSingleServiseMessage("Не удалось выполнить запись файла в канал!\n" + e.getMessage());
             }
-        }
+        };
+        Network.getInstance().getBossGroup().execute(runnable);
     }
 }
