@@ -16,16 +16,15 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class ServerWrappedFileHandler {
 
     public static int byteBufferSize = 1024*1024*5;
     private static final Logger LOGGER = LogManager.getLogger(ServerWrappedFileHandler.class.getCanonicalName());
-    public static void parseToSave(WrappedFile wrappedFile, ReentrantLock locker) {
+    public static void parseToSave(WrappedFile wrappedFile) {
         switch (wrappedFile.getTypeEnum()) {
             case FILE: saveFile(wrappedFile); break;
-            case CHUNKED: saveChunk(wrappedFile, locker); break;
+            case CHUNKED: saveChunk(wrappedFile); break;
             default: showError(); break;
         }
     }
@@ -77,15 +76,15 @@ public class ServerWrappedFileHandler {
                 wrapAndWriteChunk(serverPath, relativePath, file.getName(), channel);
     }
 
-    public static void wrapAndWriteFile(Path serverPath, Path targetPath, String fileName, Channel channel) {
+    public static void wrapAndWriteFile(Path localPath, Path targetPath, String fileName, Channel channel) {
         LOGGER.debug("Зашли в метод отправки файлов.\nФайл {} будет записан в канал и размещен в папке {}\n", fileName, targetPath.toString());
         try {
-            byte[] bytes = Files.readAllBytes(serverPath);
+            byte[] bytes = Files.readAllBytes(localPath);
 
             WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.FILE, bytes,
                     1,1,
                     fileName, targetPath.toFile());
-
+            wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
             channel.writeAndFlush(wrappedFile).addListener((ChannelFutureListener) channelFuture -> {
                 if(channelFuture.isSuccess()){
                     LOGGER.trace("Writing Complete!");
@@ -117,15 +116,17 @@ public class ServerWrappedFileHandler {
             File file = localPath.toFile();
             try(FileInputStream fis = new FileInputStream(file); BufferedInputStream bis = new BufferedInputStream(fis)) {
                 while ((bytesRed=bis.read(byteBuffer))>0) {
-                    if(chunkCounter==chunks){
-                        //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
-                        byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
-                        LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
-                                    ,chunkCounter, chunks,byteBuffer.length,bytesRed);
-                    }
                     WrappedFile wrappedFile = new WrappedFile(WrappedFile.TypeEnum.CHUNKED,
                             byteBuffer, chunkCounter, chunks,
                             fileName, targetPath.toFile());
+                    //lля последнего чанка необходимо обрезать байтовый массив во избежания появления нулевых байтов
+                    if(chunkCounter==chunks){
+                        byteBuffer = Arrays.copyOfRange(byteBuffer,0,bytesRed);
+                        LOGGER.warn("Чанк номер {} из {}\nВычитано байтов: {}\nРазмер последнего байтового массива: {}"
+                                ,chunkCounter, chunks,byteBuffer.length, bytesRed);
+                        wrappedFile.setBytes(byteBuffer);
+                        wrappedFile.setMD5Hash(Factory.MD5FileHash(localPath));
+                    }
                     ///т.к. в анонимном классе Java8 хочет effectively final - переменные
                     long finalChunkCounter = chunkCounter;
                     long finalChunks = chunks;
@@ -154,45 +155,44 @@ public class ServerWrappedFileHandler {
                 Files.delete(path);
             }
             Files.write(path, wrappedFile.getBytes());
+            LOGGER.error("MD5 comparision: " + wrappedFile.getMD5Hash().equals(Factory.MD5FileHash(path)));
             Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
         } catch (IOException e) {
             LOGGER.error("He удалось сохранить файл!\n" + e.getMessage() );
         }
     }
 
-    private static void saveChunk(WrappedFile wrappedFile, ReentrantLock locker) {
-        locker.lock();
+    private static void saveChunk(WrappedFile wrappedFile) {
         LOGGER.debug("Запись чанка № {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
         String hash_file_name = Factory.MD5PathNameHash(wrappedFile.getTargetPath().getPath(),wrappedFile.getFileName());
         Path path = Paths.get(Server.rootPath.toString(), wrappedFile.getLogin(), hash_file_name);
             try {
-//                если файла по этому адресу еще не существует
                 if(!Files.exists(path)) {
-                        LOGGER.info("Записей не обнаружено! Создаю директории и пишу первый чанк!");
-                        Files.createFile(path);
-                        Files.write(path,wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                    //если файла по этому адресу еще не существует
+                    LOGGER.info("Записей не обнаружено! Создаю директории и пишу первый чанк!");
+                    Files.createFile(path);
+                    Files.write(path,wrappedFile.getBytes(), StandardOpenOption.WRITE);
                     return;
                 } else if (Files.exists(path) && wrappedFile.getChunkNumber()==1) {
                     //если запись существует, и передается чанк с номером 1 - значит файл необходимо перезаписать
                     LOGGER.info("Запись обнаружена при этом записывается первый чанк! Удаляю старый файл и записываю первый чанк!");
-                        Files.delete(path);
-                        Files.createFile(path);
-                        Files.write(path, wrappedFile.getBytes(), StandardOpenOption.WRITE);
-                        return;
+                    Files.delete(path);
+                    Files.createFile(path);
+                    Files.write(path, wrappedFile.getBytes(), StandardOpenOption.WRITE);
+                    return;
                     }
-                //если это последний чанк файла вносим запись в базу данных
+                //если ни то, ни другое
                     LOGGER.info("Запись обнаружена, пишется чанк {} из {} ", wrappedFile.getChunkNumber(), wrappedFile.getChunkslsInFile());
-                    //если ни то, ни другое
                     Files.write(path, wrappedFile.getBytes(), StandardOpenOption.APPEND);
-
-                    if(wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
-                        Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
+                //если это последний чанк файла вносим запись в базу данных
+                if(wrappedFile.getChunkNumber() == wrappedFile.getChunkslsInFile()) {
+                    LOGGER.error("MD5 comparision: " + wrappedFile.getMD5Hash().equals(Factory.MD5FileHash(path)));
+                    Utils.createFileRecord(wrappedFile.getLogin(), wrappedFile.getTargetPath().getPath(), wrappedFile.getFileName(), hash_file_name, null);
                     }
             } catch (IOException e) {
                 LOGGER.error("Ошибка записи чанка {}!\n", wrappedFile.getChunkNumber());
                 LOGGER.error(e.getMessage());
             }
-            locker.unlock();
     }
     private static void showError() {
         LOGGER.error("Неизвестная команда или данные повреждены!");

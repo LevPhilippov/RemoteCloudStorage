@@ -38,5 +38,14 @@ public class Factory {
         return DigestUtils.md5Hex(filePath+fileName);
     }
 
+    public static String MD5FileHash(Path path) {
+        try {
+            return DigestUtils.md5Hex(new FileInputStream(path.toFile()));
+        } catch (IOException e) {
+            System.out.println("File not found!");
+        }
+        return null;
+    }
+
 
 }

@@ -15,11 +15,6 @@ import java.util.concurrent.locks.ReentrantLock;
 
 public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
     private static final Logger LOGGER = LogManager.getLogger(ObjectInboundHandler.class.getCanonicalName());
-    private ReentrantLock locker;
-
-    public ObjectInboundHandler(){
-        locker = new ReentrantLock();
-    }
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
@@ -31,10 +26,15 @@ public class ObjectInboundHandler extends ChannelInboundHandlerAdapter {
             else {
                 WrappedFile wrappedFile = (WrappedFile) msg;
                 LOGGER.debug("Получен запакованный файл! Отправляю на обработку и сохранение!");
-                ServerWrappedFileHandler.parseToSave(wrappedFile, locker);
+                ServerWrappedFileHandler.parseToSave(wrappedFile);
             }
         } finally {
             ReferenceCountUtil.release(msg);
         }
+    }
+
+    @Override
+    public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) throws Exception {
+        LOGGER.error(cause.getMessage());
     }
 }

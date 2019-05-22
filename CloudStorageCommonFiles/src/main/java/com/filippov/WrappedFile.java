@@ -16,6 +16,7 @@ public class WrappedFile implements Serializable {
     private volatile String fileName;
     private volatile File localPath;
     private volatile File targetPath;
+    private volatile String MD5Hash;
     //Не передавать login по каналу! Использовать только на сервере! Дописывать в AuthHandlere-e.
     private String login;
 
@@ -63,6 +64,11 @@ public class WrappedFile implements Serializable {
 
     public WrappedFile setLogin(String login) {
         this.login = login;
+        return this;
+    }
+
+    public WrappedFile setMD5Hash(String hash) {
+        this.MD5Hash = hash;
         return this;
     }
 }
